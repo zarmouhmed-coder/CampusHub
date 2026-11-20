@@ -1,0 +1,63 @@
+# CampusHub — local stack: PostgreSQL + FastAPI + Next.js.
+#   docker compose up --build -d     start (http://localhost:3000)
+#   docker compose down              stop (data is kept)
+#   docker compose down -v           stop AND DELETE the database volume
+name: campushub
+
+x-database-url: &database-url postgresql+psycopg://${POSTGRES_USER:-campushub}:${POSTGRES_PASSWORD:-campushub}@db:5432/${POSTGRES_DB:-campushub}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-campushub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campushub}
+      POSTGRES_DB: ${POSTGRES_DB:-campushub}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      # $$ escapes Compose interpolation: the variables are expanded inside the container.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot job: applies the Alembic migrations, then exits.
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: *database-url
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    ports:
+      - "127.0.0.1:8000:8000" # Swagger UI: http://localhost:8000/api/docs
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        API_INTERNAL_URL: http://backend:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

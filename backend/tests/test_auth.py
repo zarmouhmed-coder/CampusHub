@@ -121,3 +121,12 @@ def test_rate_limit_is_per_email(client: TestClient) -> None:
         client.post("/api/v1/auth/login", json=bad)
     good = {"email": "other@telecomnancy.eu", "password": PASSWORD}
     assert client.post("/api/v1/auth/login", json=good).status_code == 200
+
+
+def test_production_settings_harden_cookies_and_docs() -> None:
+    from app.core.config import Settings
+
+    production = Settings(environment="production")
+    assert production.session_cookie_secure is True
+    assert Settings(environment="development").session_cookie_secure is False
+    assert Settings(environment="production", cookie_secure=False).session_cookie_secure is False
