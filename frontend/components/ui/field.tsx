@@ -55,7 +55,7 @@ function FormError({ message }: { message?: string }) {
   return (
     <div
       role="alert"
-      className="border-destructive/25 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
+      className="bg-destructive/8 text-destructive rounded-xl px-3.5 py-2.5 text-sm font-medium"
     >
       {message}
     </div>

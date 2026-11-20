@@ -118,3 +118,57 @@ export function formatRelative(iso: string, now: Date = new Date()): string {
   if (Math.abs(days) < 14) return relativeFormatter.format(days, "day");
   return relativeFormatter.format(Math.round(days / 7), "week");
 }
+
+/* ---------- Calendar days ("YYYY-MM-DD", Paris) for the week strip ---------- */
+
+/** Calendar day in Paris of an instant, as "YYYY-MM-DD". */
+export function parisDayKey(date: Date | string): string {
+  const w = wallClock(new Date(date));
+  return `${w.year}-${pad(w.month)}-${pad(w.day)}`;
+}
+
+/** Noon UTC of a day key: a safe anchor that falls on the same date in Paris. */
+function keyToNoonUtc(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12));
+}
+
+export function addDays(key: string, days: number): string {
+  const date = keyToNoonUtc(key);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Monday of the week containing `key`. */
+export function startOfWeek(key: string): string {
+  const weekday = (keyToNoonUtc(key).getUTCDay() + 6) % 7; // Monday = 0
+  return addDays(key, -weekday);
+}
+
+/** Start of the day (00:00 Paris) as a UTC ISO instant. */
+export const dayStartIso = (key: string) => parisInputToIso(`${key}T00:00`);
+
+const weekdayFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: APP_TIME_ZONE,
+  weekday: "short",
+});
+const monthYearFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: APP_TIME_ZONE,
+  month: "long",
+  year: "numeric",
+});
+const shortDayFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: APP_TIME_ZONE,
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+
+/** "lun." */
+export const weekdayShort = (key: string) => weekdayFormatter.format(keyToNoonUtc(key));
+/** "23" */
+export const dayOfMonth = (key: string) => String(Number(key.slice(8)));
+/** "novembre 2026" */
+export const monthYear = (key: string) => monthYearFormatter.format(keyToNoonUtc(key));
+/** "lun. 23 nov." */
+export const shortDay = (key: string) => shortDayFormatter.format(keyToNoonUtc(key));

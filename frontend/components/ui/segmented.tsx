@@ -2,7 +2,10 @@
 
 import { cn } from "@/lib/utils";
 
-/** A compact single-choice control (radio group semantics). */
+/**
+ * Single-choice filter rendered as pill chips (radio group semantics).
+ * The selected chip is "ink" (near black); the row scrolls horizontally on mobile.
+ */
 export function Segmented<T extends string>({
   value,
   onChange,
@@ -12,7 +15,7 @@ export function Segmented<T extends string>({
 }: {
   value: T;
   onChange: (value: T) => void;
-  options: readonly { value: T; label: string }[];
+  options: readonly { value: T; label: string; count?: number }[];
   label: string;
   className?: string;
 }) {
@@ -20,7 +23,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("bg-secondary/60 inline-flex rounded-lg border p-0.5", className)}
+      className={cn("-mx-1 flex scrollbar-none gap-2 overflow-x-auto px-1 py-0.5", className)}
     >
       {options.map((option) => {
         const checked = option.value === value;
@@ -32,13 +35,23 @@ export function Segmented<T extends string>({
             aria-checked={checked}
             onClick={() => onChange(option.value)}
             className={cn(
-              "focus-visible:ring-ring flex-1 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-[3px] focus-visible:outline-none",
+              "focus-visible:ring-ring flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-[3px] focus-visible:outline-none",
               checked
-                ? "bg-card text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-ink text-ink-foreground"
+                : "bg-card text-muted-foreground shadow-card hover:text-foreground",
             )}
           >
             {option.label}
+            {option.count !== undefined && option.count > 0 && (
+              <span
+                className={cn(
+                  "grid min-w-5 place-items-center rounded-full px-1.5 text-[0.7rem] leading-5",
+                  checked ? "bg-white/20" : "bg-secondary",
+                )}
+              >
+                {option.count}
+              </span>
+            )}
           </button>
         );
       })}

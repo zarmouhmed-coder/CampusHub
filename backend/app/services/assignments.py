@@ -1,5 +1,6 @@
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
 from sqlalchemy import func, select
@@ -18,6 +19,8 @@ class AssignmentFilters:
     status: AssignmentStatus | None = None
     priority: Priority | None = None
     subject_id: uuid.UUID | None = None
+    due_after: datetime | None = None
+    due_before: datetime | None = None
     order: Literal["asc", "desc"] = "asc"
     limit: int = 50
     offset: int = 0
@@ -33,6 +36,10 @@ def list_assignments(
         query = query.where(Assignment.priority == filters.priority)
     if filters.subject_id is not None:
         query = query.where(Assignment.subject_id == filters.subject_id)
+    if filters.due_after is not None:
+        query = query.where(Assignment.due_at >= filters.due_after)
+    if filters.due_before is not None:
+        query = query.where(Assignment.due_at < filters.due_before)
 
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     due = Assignment.due_at.asc() if filters.order == "asc" else Assignment.due_at.desc()

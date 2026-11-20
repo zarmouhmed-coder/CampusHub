@@ -1,5 +1,4 @@
-import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
+import "@fontsource-variable/plus-jakarta-sans";
 import type { Metadata, Viewport } from "next";
 
 import { Providers } from "@/components/providers";
@@ -12,12 +11,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#fafafb",
+  themeColor: "#f3f4f7",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="fr">
       <body>
         <Providers>{children}</Providers>
       </body>

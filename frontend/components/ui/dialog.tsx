@@ -17,7 +17,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]",
+        "bg-ink/35 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-50 backdrop-blur-[2px]",
         className,
       )}
       {...props}
@@ -35,15 +35,15 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          // Mobile: sheet anchored at the bottom. Desktop: centered dialog.
-          "bg-popover data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 fixed inset-x-0 bottom-0 z-50 grid max-h-[92dvh] gap-5 overflow-y-auto rounded-t-2xl border p-5 shadow-lg duration-200",
-          "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95 sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:p-6",
+          // Mobile: bottom sheet with a grab handle. Desktop: centered dialog.
+          "bg-popover shadow-float before:bg-border data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-8 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-8 fixed inset-x-0 bottom-0 z-50 grid max-h-[92dvh] gap-5 overflow-y-auto rounded-t-3xl px-5 pt-8 pb-[max(1.25rem,env(safe-area-inset-bottom))] duration-200 before:absolute before:top-3 before:left-1/2 before:h-1 before:w-10 before:-translate-x-1/2 before:rounded-full",
+          "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95 sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-7 sm:before:hidden",
           className,
         )}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring absolute top-4 right-4 rounded-md p-1 transition-colors focus-visible:ring-[3px] focus-visible:outline-none">
+        <DialogPrimitive.Close className="bg-secondary text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-6 right-5 rounded-full p-1.5 transition-colors focus-visible:ring-[3px] focus-visible:outline-none sm:top-6 sm:right-6">
           <XIcon className="size-4" />
           <span className="sr-only">Fermer</span>
         </DialogPrimitive.Close>
@@ -53,7 +53,7 @@ function DialogContent({
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("grid gap-1.5 pr-8", className)} {...props} />;
+  return <div className={cn("grid gap-1 pr-10", className)} {...props} />;
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
@@ -68,7 +68,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn("text-lg font-semibold tracking-tight", className)}
+      className={cn("text-xl font-bold tracking-tight", className)}
       {...props}
     />
   );

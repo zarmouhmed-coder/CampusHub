@@ -9,6 +9,8 @@ import type { Exam, ExamInput, Page } from "@/types/api";
 export interface ExamFilters {
   when: "upcoming" | "past" | "all";
   subject_id?: string;
+  after?: string;
+  before?: string;
   limit: number;
   offset: number;
 }

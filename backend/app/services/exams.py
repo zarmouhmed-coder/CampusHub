@@ -17,6 +17,8 @@ LABEL = "Examen"
 class ExamFilters:
     when: Literal["all", "upcoming", "past"] = "all"
     subject_id: uuid.UUID | None = None
+    after: datetime | None = None
+    before: datetime | None = None
     limit: int = 50
     offset: int = 0
 
@@ -30,6 +32,10 @@ def list_exams(db: Session, user: User, filters: ExamFilters) -> tuple[list[Exam
         query = query.where(Exam.exam_at >= now)
     elif filters.when == "past":
         query = query.where(Exam.exam_at < now)
+    if filters.after is not None:
+        query = query.where(Exam.exam_at >= filters.after)
+    if filters.before is not None:
+        query = query.where(Exam.exam_at < filters.before)
 
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     # Past exams: most recent first. Otherwise: chronological.

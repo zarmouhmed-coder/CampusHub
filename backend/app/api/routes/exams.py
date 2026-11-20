@@ -2,6 +2,7 @@ import uuid
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, status
+from pydantic import AwareDatetime
 
 from app.api.deps import CurrentUser, DbSession
 from app.models import Exam
@@ -18,12 +19,15 @@ def list_exams(
     db: DbSession,
     when: Literal["all", "upcoming", "past"] = "all",
     subject_id: uuid.UUID | None = None,
+    after: AwareDatetime | None = None,
+    before: AwareDatetime | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[ExamRead]:
-    """Exams in chronological order (most recent first for `when=past`)."""
+    """Exams in chronological order (most recent first for `when=past`).
+    `after` is inclusive, `before` exclusive (ISO 8601 with timezone)."""
     items, total = service.list_exams(
-        db, user, service.ExamFilters(when, subject_id, limit, offset)
+        db, user, service.ExamFilters(when, subject_id, after, before, limit, offset)
     )
     return Page(
         items=[ExamRead.model_validate(e) for e in items], total=total, limit=limit, offset=offset

@@ -10,6 +10,8 @@ export interface AssignmentFilters {
   status?: AssignmentStatus;
   priority?: Priority;
   subject_id?: string;
+  due_after?: string;
+  due_before?: string;
   order: "asc" | "desc";
   limit: number;
   offset: number;

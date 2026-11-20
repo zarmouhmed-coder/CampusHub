@@ -17,6 +17,7 @@ import { errorMessage } from "@/lib/api-client";
 import type { Subject } from "@/types/api";
 
 import { useDeleteSubject, useSubjects } from "./api";
+import { SubjectTile } from "./subject-dot";
 import { SubjectFormDialog } from "./subject-form-dialog";
 
 export function SubjectsView() {
@@ -59,21 +60,14 @@ export function SubjectsView() {
           }
         />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {subjects.data.map((subject) => (
-            <li
-              key={subject.id}
-              className="group bg-card relative flex overflow-hidden rounded-xl border shadow-xs transition-shadow hover:shadow-sm"
-            >
-              <span
-                aria-hidden
-                className="bg-muted-foreground/30 w-1.5 shrink-0"
-                style={subject.color ? { backgroundColor: subject.color } : undefined}
-              />
-              <div className="flex min-w-0 flex-1 items-start gap-2 p-4">
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-medium">{subject.name}</h2>
-                  <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+            <li key={subject.id} className="bg-card shadow-card flex rounded-3xl p-4 sm:p-5">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <SubjectTile color={subject.color} icon={BookOpen} />
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <h2 className="truncate font-bold">{subject.name}</h2>
+                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
                     {subject.description || "Pas de description"}
                   </p>
                 </div>

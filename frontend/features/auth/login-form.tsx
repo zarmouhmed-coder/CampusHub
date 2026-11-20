@@ -67,7 +67,12 @@ export function LoginForm() {
           {...form.register("password")}
         />
       </Field>
-      <Button type="submit" className="mt-2 w-full" disabled={isSubmitting || login.isSuccess}>
+      <Button
+        type="submit"
+        className="mt-2 w-full"
+        size="lg"
+        disabled={isSubmitting || login.isSuccess}
+      >
         {isSubmitting || login.isSuccess ? "Connexion…" : "Se connecter"}
       </Button>
     </form>

@@ -2,6 +2,7 @@ import uuid
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, status
+from pydantic import AwareDatetime
 
 from app.api.deps import CurrentUser, DbSession
 from app.models import Assignment
@@ -20,12 +21,17 @@ def list_assignments(
     status: AssignmentStatus | None = None,
     priority: Priority | None = None,
     subject_id: uuid.UUID | None = None,
+    due_after: AwareDatetime | None = None,
+    due_before: AwareDatetime | None = None,
     order: Literal["asc", "desc"] = "asc",
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[AssignmentRead]:
-    """Assignments sorted by due date (ascending by default), with optional filters."""
-    filters = service.AssignmentFilters(status, priority, subject_id, order, limit, offset)
+    """Assignments sorted by due date (ascending by default), with optional filters.
+    `due_after` is inclusive, `due_before` exclusive (ISO 8601 with timezone)."""
+    filters = service.AssignmentFilters(
+        status, priority, subject_id, due_after, due_before, order, limit, offset
+    )
     items, total = service.list_assignments(db, user, filters)
     return Page(
         items=[AssignmentRead.model_validate(a) for a in items],

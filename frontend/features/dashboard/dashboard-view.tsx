@@ -1,271 +1,364 @@
 "use client";
 
 import {
-  AlertTriangle,
   ArrowRight,
   BookOpen,
-  CalendarClock,
-  CircleDashed,
+  CalendarDays,
   ClipboardList,
-  Clock,
   GraduationCap,
+  PartyPopper,
   Plus,
-  type LucideIcon,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { useQuickAdd } from "@/components/layout/quick-add";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AssignmentItem } from "@/features/assignments/assignment-item";
+import { AssignmentItem, useSetAssignmentStatus } from "@/features/assignments/assignment-item";
 import { useAssignmentDialogs } from "@/features/assignments/use-assignment-dialogs";
 import { useCurrentUser } from "@/features/auth/api";
 import { ExamItem } from "@/features/exams/exam-item";
 import { useExamDialogs } from "@/features/exams/use-exam-dialogs";
-import { SubjectFormDialog } from "@/features/subjects/subject-form-dialog";
-import { formatLongDate } from "@/lib/dates";
+import { SubjectTile } from "@/features/subjects/subject-dot";
+import { formatRelative, parisDayKey, shortDay, startOfWeek } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import type { Assignment, DashboardSummary, Exam } from "@/types/api";
 
-import { useDashboard } from "./api";
+import { useDashboard, useWeekItems } from "./api";
+import { ProgressGauge } from "./progress-gauge";
+import { WeekStrip } from "./week-strip";
 
-function StatTile({
-  label,
-  value,
-  icon: Icon,
-  tone = "default",
-}: {
-  label: string;
-  value: number;
-  icon: LucideIcon;
-  tone?: "default" | "danger";
-}) {
-  const danger = tone === "danger" && value > 0;
+type Tab = "day" | "upcoming" | "overdue" | "exams";
+
+function plural(n: number, word: string) {
+  return `${n} ${word}${n > 1 ? "s" : ""}`;
+}
+
+function Greeting({ summary }: { summary: DashboardSummary }) {
+  const { data: user } = useCurrentUser();
+  const { overdue, due_this_week } = summary.counts;
+  const subtitle =
+    overdue > 0
+      ? `Tu as ${plural(overdue, "devoir")} en retard. On s'y met ?`
+      : due_this_week > 0
+        ? `${plural(due_this_week, "rendu")} dans les 7 prochains jours.`
+        : "Rien d'urgent à l'horizon, profites-en.";
+
   return (
-    <div
-      className={cn(
-        "bg-card rounded-xl border p-4 shadow-xs",
-        danger && "border-destructive/25 bg-destructive/[0.03]",
-      )}
-    >
-      <div className="text-muted-foreground flex items-center justify-between">
-        <span className="text-sm">{label}</span>
-        <Icon className={cn("size-4", danger && "text-destructive")} />
+    <div className="flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        <h1 className="text-[1.75rem] leading-tight font-extrabold tracking-tight sm:text-3xl">
+          {user ? `Bonjour ${user.first_name}` : "Bonjour"}
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">{subtitle}</p>
       </div>
-      <p
-        className={cn(
-          "mt-2 text-2xl font-semibold tracking-tight tabular-nums",
-          danger && "text-destructive",
-        )}
-      >
-        {value}
-      </p>
     </div>
   );
 }
 
-function SeeAll({ href }: { href: string }) {
+function WeekProgressCard({ week }: { week: DashboardSummary["week"] }) {
+  const legend = [
+    { label: "Terminés", value: week.done, dot: "bg-success" },
+    { label: "En cours", value: week.in_progress, dot: "bg-warning" },
+    { label: "À faire", value: week.todo, dot: "bg-border" },
+  ];
   return (
-    <Button asChild variant="ghost" size="sm" className="text-muted-foreground -mr-2">
-      <Link href={href}>
-        Tout voir <ArrowRight />
-      </Link>
-    </Button>
+    <Card className="p-5 sm:p-6">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] items-center gap-4">
+        <div>
+          <h2 className="text-base font-bold tracking-tight">Ta semaine</h2>
+          <ul className="mt-3 grid gap-2 text-sm">
+            {legend.map((item) => (
+              <li key={item.label} className="flex items-center gap-2">
+                <span aria-hidden className={cn("size-2.5 rounded-full", item.dot)} />
+                <span className="text-muted-foreground">{item.label}</span>
+                <span className="ml-auto font-bold tabular-nums">{item.value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex justify-center">
+          {week.total === 0 ? (
+            <div className="text-muted-foreground py-4 text-center text-sm">
+              <Sparkles className="text-primary mx-auto mb-2 size-6" />
+              Aucun rendu
+              <br />
+              cette semaine
+            </div>
+          ) : (
+            <ProgressGauge done={week.done} inProgress={week.in_progress} total={week.total} />
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function NextUpCard({ summary }: { summary: DashboardSummary }) {
+  const { setStatus, pending } = useSetAssignmentStatus();
+  const assignment = summary.upcoming_assignments[0];
+  const exam = summary.upcoming_exams[0];
+  const next: { kind: "assignment"; item: Assignment } | { kind: "exam"; item: Exam } | null =
+    assignment && (!exam || assignment.due_at <= exam.exam_at)
+      ? { kind: "assignment", item: assignment }
+      : exam
+        ? { kind: "exam", item: exam }
+        : null;
+
+  return (
+    <Card className="p-5 sm:p-6">
+      <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+        Prochaine échéance
+      </p>
+      {next === null ? (
+        <p className="text-muted-foreground mt-3 text-sm">Rien à l&apos;horizon pour le moment.</p>
+      ) : (
+        <div className="mt-3 flex items-center gap-3">
+          <SubjectTile
+            color={next.item.subject?.color}
+            icon={next.kind === "assignment" ? ClipboardList : GraduationCap}
+            className="size-12"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-bold">{next.item.title}</p>
+            <p className="text-muted-foreground truncate text-xs">
+              {formatRelative(next.kind === "assignment" ? next.item.due_at : next.item.exam_at)}
+              {next.item.subject && ` · ${next.item.subject.name}`}
+            </p>
+          </div>
+          {next.kind === "assignment" ? (
+            <Button
+              disabled={pending}
+              onClick={() => setStatus(next.item, "done")}
+              aria-label={`Terminer « ${next.item.title} »`}
+            >
+              C&apos;est fait
+            </Button>
+          ) : (
+            <Button asChild variant="secondary">
+              <Link href="/exams">Voir</Link>
+            </Button>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function DashboardContent({ summary }: { summary: DashboardSummary }) {
+  // Only ever rendered in the browser (after data loaded): reading the clock is safe.
+  const [today] = useState(() => parisDayKey(new Date()));
+  const [selectedDay, setSelectedDay] = useState(today);
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(today));
+  const [tab, setTab] = useState<Tab>("upcoming");
+  const week = useWeekItems(weekStart);
+  const assignmentDialogs = useAssignmentDialogs();
+  const examDialogs = useExamDialogs();
+  const { addSubject, addAssignment } = useQuickAdd();
+
+  const busyDays = useMemo(
+    () =>
+      new Set([
+        ...week.assignments.filter((a) => a.status !== "done").map((a) => parisDayKey(a.due_at)),
+        ...week.exams.map((e) => parisDayKey(e.exam_at)),
+      ]),
+    [week.assignments, week.exams],
+  );
+
+  const dayItems = useMemo(() => {
+    const items = [
+      ...week.assignments
+        .filter((a) => parisDayKey(a.due_at) === selectedDay)
+        .map((a) => ({ kind: "assignment" as const, at: a.due_at, item: a })),
+      ...week.exams
+        .filter((e) => parisDayKey(e.exam_at) === selectedDay)
+        .map((e) => ({ kind: "exam" as const, at: e.exam_at, item: e })),
+    ];
+    return items.sort((a, b) => a.at.localeCompare(b.at));
+  }, [week.assignments, week.exams, selectedDay]);
+
+  const selectDay = (day: string) => {
+    setSelectedDay(day);
+    setWeekStart(startOfWeek(day));
+    setTab("day");
+  };
+
+  const assignmentRow = (a: Assignment) => (
+    <AssignmentItem
+      key={a.id}
+      assignment={a}
+      onEdit={assignmentDialogs.openEdit}
+      onDelete={assignmentDialogs.askDelete}
+      compact
+      surface="plain"
+    />
+  );
+  const examRow = (e: Exam) => (
+    <ExamItem
+      key={e.id}
+      exam={e}
+      onEdit={examDialogs.openEdit}
+      onDelete={examDialogs.askDelete}
+      surface="plain"
+    />
+  );
+
+  const tabs = [
+    { value: "day", label: selectedDay === today ? "Aujourd'hui" : shortDay(selectedDay) },
+    { value: "upcoming", label: "À venir" },
+    { value: "overdue", label: "En retard", count: summary.counts.overdue },
+    { value: "exams", label: "Examens", count: summary.counts.upcoming_exams },
+  ] as const;
+
+  return (
+    <div className="grid grid-cols-1 gap-5">
+      <Greeting summary={summary} />
+
+      {summary.counts.subjects === 0 && (
+        <div className="bg-ink text-ink-foreground flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/12">
+              <BookOpen className="size-5" />
+            </span>
+            <div>
+              <p className="font-bold">Commence par ajouter ta première matière</p>
+              <p className="text-ink-foreground/70 text-sm">
+                Elle te permettra de classer tes devoirs et tes examens.
+              </p>
+            </div>
+          </div>
+          <Button onClick={addSubject} className="text-ink shrink-0 bg-white hover:bg-white/90">
+            <Plus /> Ajouter une matière
+          </Button>
+        </div>
+      )}
+
+      <WeekStrip
+        weekStart={weekStart}
+        selected={selectedDay}
+        today={today}
+        busyDays={busyDays}
+        onSelect={selectDay}
+        onWeekChange={setWeekStart}
+      />
+
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+        <div className="grid grid-cols-1 gap-5">
+          <WeekProgressCard week={summary.week} />
+          <NextUpCard summary={summary} />
+        </div>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Au programme</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground -mr-2">
+              <Link href={tab === "exams" ? "/exams" : "/assignments"}>
+                Tout voir <ArrowRight />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <Segmented
+              label="Afficher"
+              value={tab}
+              onChange={setTab}
+              options={tabs}
+              className="mb-3"
+            />
+
+            {tab === "day" &&
+              (week.isPending ? (
+                <Skeleton className="h-32" />
+              ) : dayItems.length === 0 ? (
+                <EmptyState
+                  icon={CalendarDays}
+                  title="Rien de prévu ce jour-là"
+                  className="bg-secondary/50 border-0 py-8"
+                />
+              ) : (
+                <ul className="grid grid-cols-1 gap-1">
+                  {dayItems.map((entry) =>
+                    entry.kind === "assignment" ? assignmentRow(entry.item) : examRow(entry.item),
+                  )}
+                </ul>
+              ))}
+
+            {tab === "upcoming" &&
+              (summary.upcoming_assignments.length === 0 ? (
+                <EmptyState
+                  icon={ClipboardList}
+                  title="Aucun devoir à venir"
+                  description="Tout est à jour. Ajoute un devoir dès qu'un nouveau rendu est annoncé."
+                  action={
+                    <Button variant="secondary" onClick={addAssignment}>
+                      <Plus /> Ajouter un devoir
+                    </Button>
+                  }
+                  className="bg-secondary/50 border-0 py-8"
+                />
+              ) : (
+                <ul className="grid grid-cols-1 gap-1">
+                  {summary.upcoming_assignments.map(assignmentRow)}
+                </ul>
+              ))}
+
+            {tab === "overdue" &&
+              (summary.overdue_assignments.length === 0 ? (
+                <EmptyState
+                  icon={PartyPopper}
+                  title="Aucun retard, bravo !"
+                  className="bg-secondary/50 border-0 py-8"
+                />
+              ) : (
+                <ul className="grid grid-cols-1 gap-1">
+                  {summary.overdue_assignments.map(assignmentRow)}
+                </ul>
+              ))}
+
+            {tab === "exams" &&
+              (summary.upcoming_exams.length === 0 ? (
+                <EmptyState
+                  icon={GraduationCap}
+                  title="Aucun examen enregistré"
+                  description="Ajoute tes partiels pour les voir arriver."
+                  className="bg-secondary/50 border-0 py-8"
+                />
+              ) : (
+                <ul className="grid grid-cols-1 gap-1">{summary.upcoming_exams.map(examRow)}</ul>
+              ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {assignmentDialogs.dialogs}
+      {examDialogs.dialogs}
+    </div>
   );
 }
 
 function DashboardSkeleton() {
   return (
-    <div
-      aria-busy="true"
-      aria-label="Chargement du tableau de bord"
-      className="grid grid-cols-1 gap-6"
-    >
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-[5.5rem] rounded-xl" />
-        ))}
+    <div aria-busy="true" aria-label="Chargement du tableau de bord" className="grid gap-5">
+      <Skeleton className="h-16 w-64" />
+      <Skeleton className="h-28 rounded-3xl" />
+      <div className="grid gap-5 lg:grid-cols-[5fr_7fr]">
+        <Skeleton className="h-64 rounded-3xl" />
+        <Skeleton className="h-80 rounded-3xl" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Skeleton className="h-72 rounded-xl lg:col-span-3" />
-        <Skeleton className="h-72 rounded-xl lg:col-span-2" />
-      </div>
-    </div>
-  );
-}
-
-function Greeting() {
-  const { data: user } = useCurrentUser();
-  return (
-    <div>
-      <p className="text-muted-foreground text-sm first-letter:uppercase">
-        {formatLongDate(new Date())}
-      </p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-        {user ? `Bonjour ${user.first_name}` : "Bonjour"}
-      </h1>
     </div>
   );
 }
 
 export function DashboardView() {
   const dashboard = useDashboard();
-  const assignments = useAssignmentDialogs();
-  const exams = useExamDialogs();
-  const [subjectOpen, setSubjectOpen] = useState(false);
-
-  const quickActions = (
-    <div className="grid grid-cols-3 gap-2 sm:flex">
-      <Button onClick={assignments.openCreate}>
-        <Plus /> Devoir
-      </Button>
-      <Button variant="outline" onClick={exams.openCreate}>
-        <Plus /> Examen
-      </Button>
-      <Button variant="outline" onClick={() => setSubjectOpen(true)}>
-        <Plus /> Matière
-      </Button>
-    </div>
-  );
-
-  return (
-    <>
-      {dashboard.isPending ? (
-        <>
-          <div className="mb-6 h-14" />
-          <DashboardSkeleton />
-        </>
-      ) : dashboard.isError ? (
-        <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />
-      ) : (
-        <div className="grid grid-cols-1 gap-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <Greeting />
-            {quickActions}
-          </div>
-
-          {dashboard.data.counts.subjects === 0 && (
-            <div className="border-primary/20 bg-accent/60 flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <BookOpen className="text-accent-foreground mt-0.5 size-5 shrink-0" />
-                <div>
-                  <p className="font-medium">Commence par ajouter ta première matière</p>
-                  <p className="text-muted-foreground text-sm">
-                    Elle te permettra de classer tes devoirs et tes examens.
-                  </p>
-                </div>
-              </div>
-              <Button onClick={() => setSubjectOpen(true)} className="shrink-0">
-                <Plus /> Ajouter une matière
-              </Button>
-            </div>
-          )}
-
-          <section aria-label="Résumé" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatTile label="À faire" value={dashboard.data.counts.todo} icon={CircleDashed} />
-            <StatTile label="En cours" value={dashboard.data.counts.in_progress} icon={Clock} />
-            <StatTile
-              label="En retard"
-              value={dashboard.data.counts.overdue}
-              icon={AlertTriangle}
-              tone="danger"
-            />
-            <StatTile
-              label="Pour cette semaine"
-              value={dashboard.data.counts.due_this_week}
-              icon={CalendarClock}
-            />
-          </section>
-
-          {dashboard.data.overdue_assignments.length > 0 && (
-            <Card className="border-destructive/25">
-              <CardHeader>
-                <CardTitle className="text-destructive flex items-center gap-2">
-                  <AlertTriangle className="size-4" /> Devoirs en retard
-                </CardTitle>
-                <SeeAll href="/assignments" />
-              </CardHeader>
-              <CardContent>
-                <ul className="grid grid-cols-1 gap-2">
-                  {dashboard.data.overdue_assignments.map((a) => (
-                    <AssignmentItem
-                      key={a.id}
-                      assignment={a}
-                      onEdit={assignments.openEdit}
-                      onDelete={assignments.askDelete}
-                      compact
-                    />
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
-            <Card className="lg:col-span-3">
-              <CardHeader>
-                <CardTitle>Prochains devoirs</CardTitle>
-                <SeeAll href="/assignments" />
-              </CardHeader>
-              <CardContent>
-                {dashboard.data.upcoming_assignments.length === 0 ? (
-                  <EmptyState
-                    icon={ClipboardList}
-                    title="Aucun devoir à venir"
-                    description="Tout est à jour. Ajoute un devoir dès qu'un nouveau rendu est annoncé."
-                    className="py-8"
-                  />
-                ) : (
-                  <ul className="grid grid-cols-1 gap-2">
-                    {dashboard.data.upcoming_assignments.map((a) => (
-                      <AssignmentItem
-                        key={a.id}
-                        assignment={a}
-                        onEdit={assignments.openEdit}
-                        onDelete={assignments.askDelete}
-                        compact
-                      />
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Prochains examens</CardTitle>
-                <SeeAll href="/exams" />
-              </CardHeader>
-              <CardContent>
-                {dashboard.data.upcoming_exams.length === 0 ? (
-                  <EmptyState
-                    icon={GraduationCap}
-                    title="Aucun examen enregistré"
-                    description="Ajoute tes partiels pour les voir arriver."
-                    className="py-8"
-                  />
-                ) : (
-                  <ul className="grid grid-cols-1 gap-2">
-                    {dashboard.data.upcoming_exams.map((e) => (
-                      <ExamItem
-                        key={e.id}
-                        exam={e}
-                        onEdit={exams.openEdit}
-                        onDelete={exams.askDelete}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {assignments.dialogs}
-      {exams.dialogs}
-      <SubjectFormDialog open={subjectOpen} onOpenChange={setSubjectOpen} />
-    </>
-  );
+  if (dashboard.isPending) return <DashboardSkeleton />;
+  if (dashboard.isError) {
+    return <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />;
+  }
+  return <DashboardContent summary={dashboard.data} />;
 }

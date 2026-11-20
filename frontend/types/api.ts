@@ -95,4 +95,6 @@ export interface DashboardSummary {
     upcoming_exams: number;
     subjects: number;
   };
+  /** Assignments due in the current calendar week (Monday-Sunday, Paris). */
+  week: { todo: number; in_progress: number; done: number; total: number };
 }

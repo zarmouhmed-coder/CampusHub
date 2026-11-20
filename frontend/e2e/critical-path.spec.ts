@@ -14,7 +14,21 @@ const inDays = (days: number, hour = 18) => {
  * Next.js keeps previously visited pages mounted but hidden (React <Activity>),
  * so text lookups must target visible elements only.
  */
-const seen = (page: Page, text: string) => page.getByText(text).filter({ visible: true });
+const seen = (page: Page, text: string) => page.getByText(text).filter({ visible: true }).first();
+
+/** Dashboard list filter chips ("À venir", "Examens"…). */
+const chip = (page: Page, name: string) =>
+  page.getByRole("radio", { name: new RegExp(`^${name}`) }).click();
+
+async function openProfile(page: Page, mobile: boolean) {
+  if (mobile) {
+    await page.getByRole("button", { name: "Menu du compte" }).click();
+    await page.getByRole("menuitem", { name: "Mon profil" }).click();
+  } else {
+    await navigate(page, "Profil");
+  }
+  await expect(page).toHaveURL(/\/profile$/);
+}
 
 async function register(page: Page, firstName: string, email: string) {
   await page.goto("/register");
@@ -53,6 +67,7 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   ).toBeVisible();
   await expect(seen(page, "Commence par ajouter ta première matière")).toBeVisible();
   await expect(seen(page, "Aucun devoir à venir")).toBeVisible();
+  await chip(page, "Examens");
   await expect(seen(page, "Aucun examen enregistré")).toBeVisible();
 
   // 2. Logs out and back in (wrong password first).
@@ -66,7 +81,7 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   await expect(page).toHaveURL(/\/dashboard$/);
 
   // 3. Completes the profile.
-  await navigate(page, mobile ? "Profil" : "Profil");
+  await openProfile(page, mobile);
   await page.getByLabel("Promotion").fill("2027");
   await page.getByLabel("Année d'études").selectOption("2");
   await page.getByLabel("Groupe de TD").fill("TD2");
@@ -89,7 +104,7 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   ).toBeVisible();
 
   // 5. Creates an assignment linked to this subject.
-  await navigate(page, mobile ? "Devoirs" : "Devoirs");
+  await navigate(page, "Devoirs");
   await page.getByRole("button", { name: "Nouveau devoir" }).click();
   const assignmentDialog = page.getByRole("dialog");
   await assignmentDialog.getByLabel("Titre").fill("TP sockets");
@@ -113,10 +128,12 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   await expect(seen(page, "Partiel réseaux")).toBeVisible();
 
   // 7. Finds them on the dashboard.
-  await navigate(page, mobile ? "Accueil" : "Tableau de bord");
+  await navigate(page, "Accueil");
   await expect(seen(page, "TP sockets")).toBeVisible();
+  await chip(page, "Examens");
   await expect(seen(page, "Partiel réseaux")).toBeVisible();
   await expect(seen(page, "Amphi Nord")).toBeVisible();
+  await chip(page, "À venir");
 
   // 8. Changes the assignment status: done items leave the upcoming list.
   await page.getByRole("button", { name: "Marquer « TP sockets » terminé" }).click();
@@ -124,6 +141,7 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   await expect(seen(page, "Aucun devoir à venir")).toBeVisible();
 
   // 9. Edits an exam, then deletes the assignment (with confirmation).
+  await chip(page, "Examens");
   await page.getByRole("button", { name: "Actions pour Partiel réseaux" }).click();
   await page.getByRole("menuitem", { name: "Modifier" }).click();
   await page.getByRole("dialog").getByLabel("Salle").fill("Salle 2.12");
@@ -152,8 +170,9 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   const other = await browser.newContext();
   const pageB = await other.newPage();
   await register(pageB, "Bob", `bob-${suffix}@telecomnancy.eu`);
+  await chip(pageB, "Examens");
   await expect(seen(pageB, "Aucun examen enregistré")).toBeVisible();
-  await expect(seen(pageB, "Partiel réseaux")).toHaveCount(0);
+  await expect(pageB.getByText("Partiel réseaux").filter({ visible: true })).toHaveCount(0);
   expect((await pageB.request.get(`/api/v1/exams/${examId}`)).status()).toBe(404);
   expect((await pageB.request.delete(`/api/v1/exams/${examId}`)).status()).toBe(404);
   await other.close();

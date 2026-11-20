@@ -80,6 +80,14 @@ Alternative écartée : Server Components qui appellent FastAPI côté serveur e
 
 L'API exige des dates avec fuseau (`AwareDatetime`) et les convertit en UTC. Le frontend convertit la saisie `datetime-local`, lue comme heure de Paris, en instant UTC, et inversement, sans bibliothèque (`Intl` uniquement). Tests unitaires, y compris aux changements d'heure.
 
+## D13. Direction visuelle « app mobile »
+
+Inspirée des applications de suivi d'habitudes : fond gris doux, cartes blanches très arrondies sans bordure (ombre légère), noir « encre » pour les états sélectionnés (jour, filtre, menu actif), un seul accent bleu pour les actions principales, vert pour la progression. Police Plus Jakarta Sans, embarquée via `@fontsource-variable` : aucun appel à Google Fonts au build ni à l'exécution.
+
+Le tableau de bord est pensé pour le pouce : bande des jours de la semaine (les jours chargés portent un point), jauge de la semaine calendaire, carte « Prochaine échéance » avec une action directe, liste filtrable par pastilles. Sur mobile, une barre de navigation inférieure avec un bouton « + » central donne accès à l'ajout rapide depuis toutes les pages ; les formulaires s'ouvrent en bottom sheet.
+
+Pour alimenter la bande des jours, l'API a gagné des filtres de période (`due_after`/`due_before`, `after`/`before`) et le résumé du tableau de bord un bloc `week` calculé sur la semaine calendaire de Paris.
+
 ## Limites connues de la V0.1
 
 - Limitation de connexion en mémoire : à déplacer en base ou dans Redis avec plusieurs workers.

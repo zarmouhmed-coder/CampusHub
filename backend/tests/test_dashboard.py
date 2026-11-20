@@ -58,3 +58,38 @@ def test_dashboard_limits_upcoming_list(alice: TestClient) -> None:
         alice.post("/api/v1/assignments", json={"title": f"D{i}", "due_at": _at(i + 1)})
     upcoming = alice.get("/api/v1/dashboard/summary").json()["upcoming_assignments"]
     assert [a["title"] for a in upcoming] == ["D0", "D1", "D2", "D3", "D4"]
+
+
+def test_calendar_week_in_paris() -> None:
+    from app.services.dashboard import calendar_week
+
+    # Sunday 22 Nov 2026, 23:30 in Paris (22:30 UTC) still belongs to the week of Monday 16.
+    start, end = calendar_week(datetime(2026, 11, 22, 22, 30, tzinfo=UTC))
+    assert start == datetime(2026, 11, 15, 23, 0, tzinfo=UTC)
+    assert end == datetime(2026, 11, 22, 23, 0, tzinfo=UTC)
+    # Across the DST switch (29 March 2026): Monday 30 March 00:00 is UTC+2.
+    start, end = calendar_week(datetime(2026, 3, 31, 12, 0, tzinfo=UTC))
+    assert start == datetime(2026, 3, 29, 22, 0, tzinfo=UTC)
+
+
+def test_dashboard_week_progress(alice: TestClient) -> None:
+    from app.services.dashboard import calendar_week
+
+    start, _ = calendar_week(datetime.now(UTC))
+    for status, offset_days in [
+        ("done", 0),
+        ("done", 1),
+        ("todo", 2),
+        ("in_progress", 3),
+        ("todo", 9),
+    ]:
+        alice.post(
+            "/api/v1/assignments",
+            json={
+                "title": status,
+                "status": status,
+                "due_at": (start + timedelta(days=offset_days, hours=12)).isoformat(),
+            },
+        )
+    week = alice.get("/api/v1/dashboard/summary").json()["week"]
+    assert week == {"todo": 1, "in_progress": 1, "done": 2, "total": 4}

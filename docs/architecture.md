@@ -78,9 +78,9 @@ Toutes les routes sont préfixées par `/api/v1`. La documentation OpenAPI inter
 | Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
 | Profil | `GET /profile/me`, `PATCH /profile/me` |
 | Matières | `GET/POST /subjects`, `GET/PATCH/DELETE /subjects/{id}` |
-| Devoirs | `GET/POST /assignments`, `GET/PATCH/DELETE /assignments/{id}` ; filtres `status`, `priority`, `subject_id`, `order=asc\|desc`, `limit` (1-100), `offset` |
-| Examens | `GET/POST /exams`, `GET/PATCH/DELETE /exams/{id}` ; filtres `when=all\|upcoming\|past`, `subject_id`, `limit`, `offset` |
-| Tableau de bord | `GET /dashboard/summary` |
+| Devoirs | `GET/POST /assignments`, `GET/PATCH/DELETE /assignments/{id}` ; filtres `status`, `priority`, `subject_id`, `due_after` (inclus), `due_before` (exclu), `order=asc\|desc`, `limit` (1-100), `offset` |
+| Examens | `GET/POST /exams`, `GET/PATCH/DELETE /exams/{id}` ; filtres `when=all\|upcoming\|past`, `subject_id`, `after` (inclus), `before` (exclu), `limit`, `offset` |
+| Tableau de bord | `GET /dashboard/summary` : prochains devoirs, retards, prochains examens, compteurs et progression de la semaine calendaire (lundi-dimanche, heure de Paris) |
 
 Les listes paginées renvoient `{items, total, limit, offset}`. Les erreurs ont toujours la forme `{"detail": …}` : un message (401, 403, 404, 409, 429, 500) ou la liste des erreurs de validation (422).
 

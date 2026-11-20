@@ -58,3 +58,12 @@ def test_exam_list_when_filter(alice: TestClient) -> None:
     assert titles("all") == ["Passé ancien", "Passé récent", "Bientôt", "Plus tard"]
     assert titles("upcoming") == ["Bientôt", "Plus tard"]
     assert titles("past") == ["Passé récent", "Passé ancien"]
+
+
+def test_exam_date_range_filter(alice: TestClient) -> None:
+    for title, at in [("A", "2030-03-01T08:00:00Z"), ("B", "2030-03-02T08:00:00Z")]:
+        alice.post("/api/v1/exams", json={"title": title, "exam_at": at})
+    response = alice.get(
+        "/api/v1/exams", params={"after": "2030-03-02T00:00:00Z", "before": "2030-03-03T00:00:00Z"}
+    )
+    assert [e["title"] for e in response.json()["items"]] == ["B"]

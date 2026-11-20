@@ -65,7 +65,12 @@ export function RegisterForm() {
           {...form.register("password")}
         />
       </Field>
-      <Button type="submit" className="mt-2 w-full" disabled={isSubmitting || register.isSuccess}>
+      <Button
+        type="submit"
+        className="mt-2 w-full"
+        size="lg"
+        disabled={isSubmitting || register.isSuccess}
+      >
         {isSubmitting || register.isSuccess ? "Création du compte…" : "Créer mon compte"}
       </Button>
     </form>

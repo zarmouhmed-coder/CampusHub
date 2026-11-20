@@ -11,7 +11,8 @@ V0.1, pensée d'abord pour les étudiants de Télécom Nancy.
 - **Matières** : création, modification, suppression, couleur. Supprimer une matière **conserve** ses devoirs et examens (ils passent « sans matière »).
 - **Devoirs** (devoirs, TP, projets) : échéance, priorité, statut (à faire, en cours, terminé), matière ; tri par échéance, filtres par statut, priorité et matière, pagination ; changement de statut en un clic.
 - **Examens** : date et heure, salle, matière, description ; vues « À venir » et « Passés ».
-- **Tableau de bord** : message d'accueil, compteurs, devoirs en retard, prochains devoirs et examens, raccourcis de création, états vides utiles.
+- **Tableau de bord** : message d'accueil, bande des jours de la semaine, jauge de progression de la semaine, prochaine échéance avec action directe, listes « Aujourd'hui / À venir / En retard / Examens », états vides utiles.
+- **Ajout rapide** : bouton « + » accessible depuis toutes les pages (barre inférieure sur mobile).
 - **Isolation stricte** : un étudiant ne peut ni lire, ni modifier, ni supprimer les données d'un autre, y compris en modifiant un identifiant dans l'URL (vérifié par des tests).
 - Interface responsive : barre latérale sur ordinateur, navigation inférieure sur mobile.
 
@@ -21,7 +22,7 @@ Hors périmètre de la V0.1 : notes, emploi du temps, notifications, IA, connexi
 
 | Couche | Technologies |
 | --- | --- |
-| Frontend | Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS 4, composants façon shadcn/ui (Radix), Lucide, TanStack Query, React Hook Form + Zod |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS 4, composants façon shadcn/ui (Radix), police Plus Jakarta Sans, Lucide, TanStack Query, React Hook Form + Zod |
 | Backend | Python 3.13, FastAPI, Pydantic 2, SQLAlchemy 2, Alembic, Argon2id |
 | Base de données | PostgreSQL 16 |
 | Qualité | Pytest, Ruff, mypy (strict), ESLint, Prettier, Vitest, Playwright |

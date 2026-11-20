@@ -82,3 +82,22 @@ def test_assignment_list_sort_filters_and_pagination(alice: TestClient) -> None:
     assert page["total"] == 3 and page["limit"] == 2 and page["offset"] == 1
     assert alice.get("/api/v1/assignments?status=nope").status_code == 422
     assert alice.get("/api/v1/assignments?limit=1000").status_code == 422
+
+
+def test_assignment_date_range_filter(alice: TestClient) -> None:
+    for title, due in [
+        ("Avant", "2030-01-05T22:59:59Z"),
+        ("Début", "2030-01-05T23:00:00Z"),  # 6 Jan 00:00 in Paris
+        ("Fin", "2030-01-06T22:59:59Z"),
+        ("Après", "2030-01-06T23:00:00Z"),
+    ]:
+        _create(alice, title=title, due_at=due)
+    response = alice.get(
+        "/api/v1/assignments",
+        params={
+            "due_after": "2030-01-06T00:00:00+01:00",
+            "due_before": "2030-01-07T00:00:00+01:00",
+        },
+    )
+    assert [a["title"] for a in response.json()["items"]] == ["Début", "Fin"]
+    assert alice.get("/api/v1/assignments?due_after=2030-01-06T00:00:00").status_code == 422
