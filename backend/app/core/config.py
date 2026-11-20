@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Secure cookies require HTTPS. Defaults to True in production (see below).
     cookie_secure: bool | None = None
 
-    # Login throttling: max failed attempts per window, per e-mail and per IP.
+    # Login throttling: max failed attempts per e-mail address within the window.
     login_max_attempts: int = 5
     login_window_seconds: int = 15 * 60
 

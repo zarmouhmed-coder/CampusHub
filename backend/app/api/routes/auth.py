@@ -41,9 +41,12 @@ def register(data: RegisterRequest, db: DbSession, response: Response) -> UserRe
 
 
 @router.post("/login")
-def login(data: LoginRequest, request: Request, db: DbSession, response: Response) -> UserRead:
-    keys = (f"email:{data.email}", f"ip:{request.client.host if request.client else '?'}")
-    retry_after = login_limiter.retry_after(*keys)
+def login(data: LoginRequest, db: DbSession, response: Response) -> UserRead:
+    # Throttled per e-mail: protects each account against password guessing.
+    # Per-IP throttling is not done here: behind the Next.js proxy every request comes
+    # from the same address. It belongs to the public reverse proxy (see docs/decisions.md).
+    key = f"email:{data.email}"
+    retry_after = login_limiter.retry_after(key)
     if retry_after:
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
@@ -52,9 +55,9 @@ def login(data: LoginRequest, request: Request, db: DbSession, response: Respons
         )
     user = auth_service.authenticate(db, data.email, data.password)
     if user is None:
-        login_limiter.record_failure(*keys)
+        login_limiter.record_failure(key)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou mot de passe incorrect.")
-    login_limiter.reset(keys[0])
+    login_limiter.reset(key)
     return _login_response(db, response, user)
 
 

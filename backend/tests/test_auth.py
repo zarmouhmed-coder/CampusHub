@@ -109,3 +109,15 @@ def test_csrf_origin_check(alice: TestClient) -> None:
     assert evil.status_code == 403
     ok = alice.post("/api/v1/subjects", json=payload, headers={"Origin": "http://localhost:3000"})
     assert ok.status_code == 201
+
+
+def test_rate_limit_is_per_email(client: TestClient) -> None:
+    """Failures on one account must not lock other accounts (same client IP)."""
+    register(client, "victim@telecomnancy.eu")
+    register(client, "other@telecomnancy.eu")
+    client.post("/api/v1/auth/logout")
+    bad = {"email": "victim@telecomnancy.eu", "password": "wrong-password"}
+    for _ in range(get_settings().login_max_attempts + 1):
+        client.post("/api/v1/auth/login", json=bad)
+    good = {"email": "other@telecomnancy.eu", "password": PASSWORD}
+    assert client.post("/api/v1/auth/login", json=good).status_code == 200
