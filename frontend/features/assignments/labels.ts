@@ -1,17 +1,4 @@
-import type { AssignmentStatus, Priority } from "@/types/api";
-
-export const STATUS_LABELS: Record<AssignmentStatus, string> = {
-  todo: "À faire",
-  in_progress: "En cours",
-  done: "Terminé",
-};
-
-export const PRIORITY_LABELS: Record<Priority, string> = {
-  low: "Basse",
-  normal: "Normale",
-  high: "Élevée",
-};
-
+/** Badge colours per status / priority (labels come from the i18n dictionary). */
 export const STATUS_BADGE = {
   todo: "neutral",
   in_progress: "warning",
@@ -23,3 +10,6 @@ export const PRIORITY_BADGE = {
   normal: "accent",
   high: "danger",
 } as const;
+
+export const STATUSES = ["todo", "in_progress", "done"] as const;
+export const PRIORITIES = ["low", "normal", "high"] as const;

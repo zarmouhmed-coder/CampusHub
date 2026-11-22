@@ -1,6 +1,9 @@
+"use client";
+
 import type * as React from "react";
 
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /** Label + control + hint/error, with the right aria wiring. */
@@ -21,11 +24,14 @@ function Field({
   className?: string;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className={cn("grid gap-1.5", className)}>
       <Label htmlFor={id}>
         {label}
-        {optional && <span className="text-muted-foreground text-xs font-normal">facultatif</span>}
+        {optional && (
+          <span className="text-muted-foreground text-xs font-normal">{t.common.optional}</span>
+        )}
       </Label>
       {children}
       {error ? (
@@ -55,7 +61,7 @@ function FormError({ message }: { message?: string }) {
   return (
     <div
       role="alert"
-      className="bg-destructive/8 text-destructive rounded-xl px-3.5 py-2.5 text-sm font-medium"
+      className="border-destructive/25 bg-destructive/8 text-destructive rounded-lg border px-3.5 py-2.5 text-sm font-medium"
     >
       {message}
     </div>

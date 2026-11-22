@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
+/** Floating menus use the glass surface. */
 function DropdownMenuContent({
   className,
-  sideOffset = 4,
+  sideOffset = 6,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -18,7 +19,7 @@ function DropdownMenuContent({
       <DropdownMenuPrimitive.Content
         sideOffset={sideOffset}
         className={cn(
-          "bg-popover text-popover-foreground data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 shadow-float z-50 min-w-[10rem] overflow-hidden rounded-2xl p-1.5",
+          "glass-strong text-popover-foreground data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 z-50 min-w-[11rem] overflow-hidden rounded-xl p-1",
           className,
         )}
         {...props}
@@ -38,7 +39,7 @@ function DropdownMenuItem({
     <DropdownMenuPrimitive.Item
       data-variant={variant}
       className={cn(
-        "focus:bg-secondary data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/8 [&_svg]:text-muted-foreground data-[variant=destructive]:[&_svg]:text-destructive relative flex cursor-default items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-medium outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+        "focus:bg-secondary/80 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 [&_svg]:text-muted-foreground data-[variant=destructive]:[&_svg]:text-destructive relative flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
         className,
       )}
       {...props}
@@ -52,7 +53,7 @@ function DropdownMenuLabel({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Label>) {
   return (
     <DropdownMenuPrimitive.Label
-      className={cn("text-muted-foreground px-2 py-1.5 text-xs font-medium", className)}
+      className={cn("text-muted-foreground px-2.5 py-1.5 text-xs font-medium", className)}
       {...props}
     />
   );

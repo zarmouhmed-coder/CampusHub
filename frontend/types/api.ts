@@ -3,10 +3,14 @@
 export type Priority = "low" | "normal" | "high";
 export type AssignmentStatus = "todo" | "in_progress" | "done";
 
+export type Locale = "fr" | "en";
+
 export interface User {
   id: string;
   email: string;
   first_name: string;
+  locale: Locale;
+  timezone: string;
   created_at: string;
 }
 
@@ -18,6 +22,8 @@ export interface Profile {
   speciality: string | null;
   td_group: string | null;
   tp_group: string | null;
+  locale: Locale;
+  timezone: string;
 }
 export type ProfileUpdate = Partial<Omit<Profile, "email">>;
 

@@ -3,15 +3,16 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/** Soft UI inset field: slightly recessed, lifts to the card colour on focus. */
 export const fieldBase =
-  "w-full min-w-0 rounded-xl border border-transparent bg-input px-3.5 text-base transition-[color,box-shadow,background-color] outline-none placeholder:text-muted-foreground/70 focus-visible:border-primary/50 focus-visible:bg-card focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive/60 aria-invalid:ring-destructive/15 md:text-sm";
+  "soft-inset w-full min-w-0 rounded-lg px-3 text-base transition-[color,box-shadow,background-color,border-color] outline-none placeholder:text-muted-foreground/70 focus-visible:border-primary/50 focus-visible:bg-card focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive/60 aria-invalid:ring-destructive/15 md:text-sm";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input
       type={type}
       data-slot="input"
-      className={cn(fieldBase, "h-11 py-1", className)}
+      className={cn(fieldBase, "h-10 py-1", className)}
       {...props}
     />
   );
@@ -21,7 +22,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea
       data-slot="textarea"
-      className={cn(fieldBase, "min-h-24 resize-y py-2.5", className)}
+      className={cn(fieldBase, "min-h-24 resize-y py-2", className)}
       {...props}
     />
   );
@@ -33,7 +34,7 @@ function NativeSelect({ className, children, ...props }: React.ComponentProps<"s
     <div className={cn("relative", className)}>
       <select
         data-slot="native-select"
-        className={cn(fieldBase, "h-11 appearance-none pr-9")}
+        className={cn(fieldBase, "h-10 appearance-none pr-9")}
         {...props}
       >
         {children}

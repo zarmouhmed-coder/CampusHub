@@ -76,17 +76,37 @@ Les pages Next.js sont pré-rendues (shell statique) puis chargent les données 
 
 Alternative écartée : Server Components qui appellent FastAPI côté serveur en relayant le cookie. Plus de complexité (relais du cookie, Suspense partout avec Cache Components) pour un gain faible sur une application entièrement privée.
 
-## D12. Dates : UTC en base, Europe/Paris à l'écran
+## D12. Dates : UTC en base, fuseau de l'utilisateur à l'écran
 
-L'API exige des dates avec fuseau (`AwareDatetime`) et les convertit en UTC. Le frontend convertit la saisie `datetime-local`, lue comme heure de Paris, en instant UTC, et inversement, sans bibliothèque (`Intl` uniquement). Tests unitaires, y compris aux changements d'heure.
+L'API exige des dates avec fuseau (`AwareDatetime`) et les convertit en UTC. Le frontend affiche et saisit les dates dans le fuseau du profil (D16), sans bibliothèque (`Intl` uniquement). Tests unitaires, y compris aux changements d'heure et pour plusieurs fuseaux africains.
 
-## D13. Direction visuelle « app mobile »
+## D13. Direction visuelle « app mobile » (remplacée par D17)
 
 Inspirée des applications de suivi d'habitudes : fond gris doux, cartes blanches très arrondies sans bordure (ombre légère), noir « encre » pour les états sélectionnés (jour, filtre, menu actif), un seul accent bleu pour les actions principales, vert pour la progression. Police Plus Jakarta Sans, embarquée via `@fontsource-variable` : aucun appel à Google Fonts au build ni à l'exécution.
 
 Le tableau de bord est pensé pour le pouce : bande des jours de la semaine (les jours chargés portent un point), jauge de la semaine calendaire, carte « Prochaine échéance » avec une action directe, liste filtrable par pastilles. Sur mobile, une barre de navigation inférieure avec un bouton « + » central donne accès à l'ajout rapide depuis toutes les pages ; les formulaires s'ouvrent en bottom sheet.
 
 Pour alimenter la bande des jours, l'API a gagné des filtres de période (`due_after`/`due_before`, `after`/`before`) et le résumé du tableau de bord un bloc `week` calculé sur la semaine calendaire de Paris.
+
+## D14. Traduction sans bibliothèque
+
+Deux langues au lancement (français, anglais). Un dictionnaire typé par langue (`frontend/lib/i18n/`) : le français fait référence, l'anglais doit avoir exactement la même forme, donc une traduction manquante empêche la compilation. Les pluriels et les textes variables sont des fonctions. Langue choisie : cookie avant connexion (détectée depuis le navigateur), puis profil utilisateur, qui l'emporte.
+
+Pourquoi pas `next-intl` : la traduction repose sur la lecture de la requête côté serveur, ce qui, avec Cache Components, imposerait des frontières `<Suspense>` sur chaque page. Toutes nos pages sont des composants clients : un contexte React suffit. Une troisième langue (arabe, avec écriture de droite à gauche, ou portugais) s'ajoute avec un fichier de dictionnaire.
+
+## D15. Codes d'erreur stables dans l'API
+
+Chaque erreur renvoie `{"code", "detail"}`. L'interface traduit le code ; le texte `detail` reste en anglais pour les développeurs et les intégrations. Les messages d'erreur ne sont donc plus liés à une langue côté serveur.
+
+## D16. Fuseau horaire et langue par utilisateur
+
+`profiles.locale` et `profiles.timezone` (nom IANA validé). À l'inscription, le navigateur envoie son fuseau ; les comptes existants ont reçu `fr` / `Europe/Paris` par la migration. « Cette semaine » signifie partout la semaine calendaire (lundi-dimanche) dans ce fuseau : compteurs du tableau de bord, jauge et bande des jours, ce qui supprime l'ancienne incohérence entre « 7 prochains jours » et « semaine ». Au lot 2, le fuseau et la langue par défaut viendront de l'établissement.
+
+## D17. Design system « Campus »
+
+Remplace la direction D13 : identité universitaire (bleu nuit, bleu institutionnel, or patiné, titres serif Fraunces, écusson), trois familles de surfaces aux rôles stricts (verre pour les couches flottantes, Soft UI pour les cartes, plat pour les tableaux), mode sombre, tableaux denses sur ordinateur. Détails et règles dans [design-system.md](design-system.md).
+
+Aucune fonctionnalité supprimée. Changement visible : sur le tableau de bord, l'onglet « Examens » de la liste est devenu une carte permanente « Prochains examens » dans la colonne latérale, pour utiliser l'espace disponible sur ordinateur.
 
 ## Limites connues de la V0.1
 

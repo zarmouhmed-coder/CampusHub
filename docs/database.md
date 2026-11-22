@@ -43,6 +43,8 @@ users 1───1 profiles
 | `academic_year` | smallint | facultatif, `CHECK BETWEEN 1 AND 8` |
 | `speciality` | varchar(100) | facultatif |
 | `td_group`, `tp_group` | varchar(50) | facultatifs |
+| `locale` | varchar(5) | `fr` par défaut, `CHECK IN ('fr', 'en')` |
+| `timezone` | varchar(64) | nom IANA (`Africa/Dakar`…), `Europe/Paris` par défaut ; validé par l'API |
 | `created_at`, `updated_at` | timestamptz | |
 
 Relation 1-1 : la clé primaire est l'identifiant de l'utilisateur, ce qui interdit d'avoir deux profils pour un compte.

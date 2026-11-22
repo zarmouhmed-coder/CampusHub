@@ -1,16 +1,17 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Field, fieldA11y, FormError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { applyApiError } from "@/lib/form-errors";
+import { useI18n } from "@/lib/i18n";
 
 import { useLogin } from "./api";
-import { loginSchema, type LoginValues } from "./schemas";
+import { makeLoginSchema, type LoginValues } from "./schemas";
 
 /**
  * "?expired=1" is read on the client only. Reading searchParams on the server would
@@ -25,10 +26,12 @@ function useSessionExpiredFlag() {
 }
 
 export function LoginForm() {
+  const { t } = useI18n();
   const sessionExpired = useSessionExpiredFlag();
   const login = useLogin();
+  const schema = useMemo(() => makeLoginSchema(t), [t]);
   const form = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
   const { errors, isSubmitting } = form.formState;
@@ -37,29 +40,29 @@ export function LoginForm() {
     try {
       await login.mutateAsync(values);
     } catch (error) {
-      applyApiError(error, form.setError, ["email", "password"]);
+      applyApiError(error, form.setError, ["email", "password"], t);
     }
   });
 
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-4">
       {sessionExpired && !errors.root && (
-        <p className="bg-accent text-accent-foreground rounded-md px-3 py-2 text-sm">
-          Ta session a expiré. Reconnecte-toi pour continuer.
+        <p className="border-primary/20 bg-accent text-accent-foreground rounded-lg border px-3.5 py-2.5 text-sm">
+          {t.auth.sessionExpired}
         </p>
       )}
       <FormError message={errors.root?.server?.message} />
-      <Field id="email" label="Adresse e-mail" error={errors.email?.message}>
+      <Field id="email" label={t.auth.email} error={errors.email?.message}>
         <Input
           type="email"
           autoComplete="email"
           inputMode="email"
-          placeholder="prenom.nom@telecomnancy.eu"
+          placeholder={t.auth.emailPlaceholder}
           {...fieldA11y("email", errors.email?.message)}
           {...form.register("email")}
         />
       </Field>
-      <Field id="password" label="Mot de passe" error={errors.password?.message}>
+      <Field id="password" label={t.auth.password} error={errors.password?.message}>
         <Input
           type="password"
           autoComplete="current-password"
@@ -69,11 +72,11 @@ export function LoginForm() {
       </Field>
       <Button
         type="submit"
-        className="mt-2 w-full"
         size="lg"
+        className="mt-2 w-full"
         disabled={isSubmitting || login.isSuccess}
       >
-        {isSubmitting || login.isSuccess ? "Connexion…" : "Se connecter"}
+        {isSubmitting || login.isSuccess ? t.auth.loggingIn : t.auth.loginSubmit}
       </Button>
     </form>
   );

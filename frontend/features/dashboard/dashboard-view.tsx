@@ -1,14 +1,18 @@
 "use client";
 
 import {
+  AlertTriangle,
   ArrowRight,
   BookOpen,
   CalendarDays,
+  CircleDashed,
   ClipboardList,
+  Clock,
   GraduationCap,
   PartyPopper,
   Plus,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -25,7 +29,9 @@ import { useCurrentUser } from "@/features/auth/api";
 import { ExamItem } from "@/features/exams/exam-item";
 import { useExamDialogs } from "@/features/exams/use-exam-dialogs";
 import { SubjectTile } from "@/features/subjects/subject-dot";
-import { formatRelative, parisDayKey, shortDay, startOfWeek } from "@/lib/dates";
+import { startOfWeek } from "@/lib/dates";
+import { useI18n } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import type { Assignment, DashboardSummary, Exam } from "@/types/api";
 
@@ -33,73 +39,118 @@ import { useDashboard, useWeekItems } from "./api";
 import { ProgressGauge } from "./progress-gauge";
 import { WeekStrip } from "./week-strip";
 
-type Tab = "day" | "upcoming" | "overdue" | "exams";
+type Tab = "day" | "upcoming" | "overdue";
 
-function plural(n: number, word: string) {
-  return `${n} ${word}${n > 1 ? "s" : ""}`;
-}
-
-function Greeting({ summary }: { summary: DashboardSummary }) {
-  const { data: user } = useCurrentUser();
-  const { overdue, due_this_week } = summary.counts;
-  const subtitle =
-    overdue > 0
-      ? `Tu as ${plural(overdue, "devoir")} en retard. On s'y met ?`
-      : due_this_week > 0
-        ? `${plural(due_this_week, "rendu")} dans les 7 prochains jours.`
-        : "Rien d'urgent à l'horizon, profites-en.";
-
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  tone?: "default" | "danger" | "gold";
+}) {
+  const alert = tone === "danger" && value > 0;
   return (
-    <div className="flex items-end justify-between gap-4">
+    <div
+      className={cn(
+        "soft flex items-center gap-3 rounded-xl px-3.5 py-3",
+        alert && "border-destructive/30",
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-9 shrink-0 place-items-center rounded-lg",
+          alert
+            ? "bg-destructive/10 text-destructive"
+            : tone === "gold"
+              ? "bg-gold/15 text-gold-foreground"
+              : "bg-accent text-accent-foreground",
+        )}
+      >
+        <Icon className="size-[1.05rem]" strokeWidth={1.9} />
+      </span>
       <div className="min-w-0">
-        <h1 className="text-[1.75rem] leading-tight font-extrabold tracking-tight sm:text-3xl">
-          {user ? `Bonjour ${user.first_name}` : "Bonjour"}
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">{subtitle}</p>
+        <p
+          className={cn(
+            "font-display text-xl leading-none font-semibold tabular-nums",
+            alert && "text-destructive",
+          )}
+        >
+          {value}
+        </p>
+        <p className="text-muted-foreground mt-1 truncate text-xs">{label}</p>
       </div>
     </div>
   );
 }
 
+function Header({ summary }: { summary: DashboardSummary }) {
+  const { t } = useI18n();
+  const fmt = useFormat();
+  const { data: user } = useCurrentUser();
+  const { overdue, due_this_week } = summary.counts;
+  const subtitle =
+    overdue > 0
+      ? t.dashboard.subtitleOverdue(overdue)
+      : due_this_week > 0
+        ? t.dashboard.subtitleWeek(due_this_week)
+        : t.dashboard.subtitleCalm;
+  return (
+    <div>
+      <p className="text-gold-foreground text-xs font-semibold tracking-wider uppercase first-letter:uppercase">
+        {fmt.longDate(new Date())}
+      </p>
+      <h1 className="font-display mt-1 text-[1.75rem] leading-tight font-semibold tracking-tight sm:text-3xl">
+        {user ? t.dashboard.hello(user.first_name) : t.dashboard.title}
+      </h1>
+      <p className="text-muted-foreground mt-1 text-sm">{subtitle}</p>
+    </div>
+  );
+}
+
 function WeekProgressCard({ week }: { week: DashboardSummary["week"] }) {
+  const { t } = useI18n();
   const legend = [
-    { label: "Terminés", value: week.done, dot: "bg-success" },
-    { label: "En cours", value: week.in_progress, dot: "bg-warning" },
-    { label: "À faire", value: week.todo, dot: "bg-border" },
+    { label: t.dashboard.weekLegendDone, value: week.done, dot: "bg-success" },
+    { label: t.dashboard.weekLegendProgress, value: week.in_progress, dot: "bg-warning" },
+    { label: t.dashboard.weekLegendTodo, value: week.todo, dot: "bg-input" },
   ];
   return (
-    <Card className="p-5 sm:p-6">
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] items-center gap-4">
-        <div>
-          <h2 className="text-base font-bold tracking-tight">Ta semaine</h2>
-          <ul className="mt-3 grid gap-2 text-sm">
-            {legend.map((item) => (
-              <li key={item.label} className="flex items-center gap-2">
-                <span aria-hidden className={cn("size-2.5 rounded-full", item.dot)} />
-                <span className="text-muted-foreground">{item.label}</span>
-                <span className="ml-auto font-bold tabular-nums">{item.value}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.dashboard.weekTitle}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] items-center gap-3">
+        <ul className="grid gap-2 text-sm">
+          {legend.map((item) => (
+            <li key={item.label} className="flex items-center gap-2">
+              <span aria-hidden className={cn("size-2 rounded-full", item.dot)} />
+              <span className="text-muted-foreground truncate">{item.label}</span>
+              <span className="ml-auto font-semibold tabular-nums">{item.value}</span>
+            </li>
+          ))}
+        </ul>
         <div className="flex justify-center">
           {week.total === 0 ? (
-            <div className="text-muted-foreground py-4 text-center text-sm">
-              <Sparkles className="text-primary mx-auto mb-2 size-6" />
-              Aucun rendu
-              <br />
-              cette semaine
+            <div className="text-muted-foreground py-3 text-center text-xs">
+              <Sparkles className="text-gold mx-auto mb-1.5 size-5" />
+              {t.dashboard.weekEmpty}
             </div>
           ) : (
             <ProgressGauge done={week.done} inProgress={week.in_progress} total={week.total} />
           )}
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }
 
 function NextUpCard({ summary }: { summary: DashboardSummary }) {
+  const { t } = useI18n();
+  const fmt = useFormat();
   const { setStatus, pending } = useSetAssignmentStatus();
   const assignment = summary.upcoming_assignments[0];
   const exam = summary.upcoming_exams[0];
@@ -111,76 +162,97 @@ function NextUpCard({ summary }: { summary: DashboardSummary }) {
         : null;
 
   return (
-    <Card className="p-5 sm:p-6">
-      <p className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-        Prochaine échéance
-      </p>
-      {next === null ? (
-        <p className="text-muted-foreground mt-3 text-sm">Rien à l&apos;horizon pour le moment.</p>
-      ) : (
-        <div className="mt-3 flex items-center gap-3">
-          <SubjectTile
-            color={next.item.subject?.color}
-            icon={next.kind === "assignment" ? ClipboardList : GraduationCap}
-            className="size-12"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-bold">{next.item.title}</p>
-            <p className="text-muted-foreground truncate text-xs">
-              {formatRelative(next.kind === "assignment" ? next.item.due_at : next.item.exam_at)}
-              {next.item.subject && ` · ${next.item.subject.name}`}
-            </p>
+    <Card className="relative overflow-hidden">
+      <span
+        aria-hidden
+        className="from-gold to-primary absolute inset-y-0 left-0 w-1 bg-gradient-to-b"
+      />
+      <CardHeader>
+        <CardTitle className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+          {t.dashboard.nextUp}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {next === null ? (
+          <p className="text-muted-foreground text-sm">{t.dashboard.nothingNext}</p>
+        ) : (
+          <div className="flex items-center gap-3">
+            <SubjectTile
+              color={next.item.subject?.color}
+              icon={next.kind === "assignment" ? ClipboardList : GraduationCap}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold">{next.item.title}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {fmt.relative(next.kind === "assignment" ? next.item.due_at : next.item.exam_at)}
+                {next.item.subject && ` · ${next.item.subject.name}`}
+              </p>
+            </div>
+            {next.kind === "assignment" ? (
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() => setStatus(next.item, "done")}
+                aria-label={t.dashboard.markDoneAria(next.item.title)}
+              >
+                {t.dashboard.markDone}
+              </Button>
+            ) : (
+              <Button asChild size="sm" variant="secondary">
+                <Link href="/exams">{t.dashboard.view}</Link>
+              </Button>
+            )}
           </div>
-          {next.kind === "assignment" ? (
-            <Button
-              disabled={pending}
-              onClick={() => setStatus(next.item, "done")}
-              aria-label={`Terminer « ${next.item.title} »`}
-            >
-              C&apos;est fait
-            </Button>
-          ) : (
-            <Button asChild variant="secondary">
-              <Link href="/exams">Voir</Link>
-            </Button>
-          )}
-        </div>
-      )}
+        )}
+      </CardContent>
     </Card>
   );
 }
 
+function SeeAll({ href }: { href: string }) {
+  const { t } = useI18n();
+  return (
+    <Button asChild variant="ghost" size="sm" className="-mr-2">
+      <Link href={href}>
+        {t.common.seeAll} <ArrowRight />
+      </Link>
+    </Button>
+  );
+}
+
 function DashboardContent({ summary }: { summary: DashboardSummary }) {
-  // Only ever rendered in the browser (after data loaded): reading the clock is safe.
-  const [today] = useState(() => parisDayKey(new Date()));
+  const { t } = useI18n();
+  const fmt = useFormat();
+  // Only rendered in the browser (after data loaded): reading the clock is safe.
+  const today = fmt.dayKey(new Date());
   const [selectedDay, setSelectedDay] = useState(today);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(today));
   const [tab, setTab] = useState<Tab>("upcoming");
-  const week = useWeekItems(weekStart);
+  const week = useWeekItems(weekStart, fmt.dayStart);
   const assignmentDialogs = useAssignmentDialogs();
   const examDialogs = useExamDialogs();
-  const { addSubject, addAssignment } = useQuickAdd();
+  const { addSubject, addAssignment, addExam } = useQuickAdd();
 
   const busyDays = useMemo(
     () =>
       new Set([
-        ...week.assignments.filter((a) => a.status !== "done").map((a) => parisDayKey(a.due_at)),
-        ...week.exams.map((e) => parisDayKey(e.exam_at)),
+        ...week.assignments.filter((a) => a.status !== "done").map((a) => fmt.dayKey(a.due_at)),
+        ...week.exams.map((e) => fmt.dayKey(e.exam_at)),
       ]),
-    [week.assignments, week.exams],
+    [week.assignments, week.exams, fmt],
   );
 
   const dayItems = useMemo(() => {
     const items = [
       ...week.assignments
-        .filter((a) => parisDayKey(a.due_at) === selectedDay)
+        .filter((a) => fmt.dayKey(a.due_at) === selectedDay)
         .map((a) => ({ kind: "assignment" as const, at: a.due_at, item: a })),
       ...week.exams
-        .filter((e) => parisDayKey(e.exam_at) === selectedDay)
+        .filter((e) => fmt.dayKey(e.exam_at) === selectedDay)
         .map((e) => ({ kind: "exam" as const, at: e.exam_at, item: e })),
     ];
     return items.sort((a, b) => a.at.localeCompare(b.at));
-  }, [week.assignments, week.exams, selectedDay]);
+  }, [week.assignments, week.exams, selectedDay, fmt]);
 
   const selectDay = (day: string) => {
     setSelectedDay(day);
@@ -209,130 +281,171 @@ function DashboardContent({ summary }: { summary: DashboardSummary }) {
   );
 
   const tabs = [
-    { value: "day", label: selectedDay === today ? "Aujourd'hui" : shortDay(selectedDay) },
-    { value: "upcoming", label: "À venir" },
-    { value: "overdue", label: "En retard", count: summary.counts.overdue },
-    { value: "exams", label: "Examens", count: summary.counts.upcoming_exams },
+    { value: "day", label: selectedDay === today ? t.common.today : fmt.shortDay(selectedDay) },
+    { value: "upcoming", label: t.dashboard.tabUpcoming },
+    { value: "overdue", label: t.dashboard.tabOverdue, count: summary.counts.overdue },
   ] as const;
 
   return (
     <div className="grid grid-cols-1 gap-5">
-      <Greeting summary={summary} />
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <Header summary={summary} />
+        <section
+          aria-label={t.dashboard.summary}
+          className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:w-[44rem]"
+        >
+          <Kpi label={t.dashboard.kpiTodo} value={summary.counts.todo} icon={CircleDashed} />
+          <Kpi label={t.dashboard.kpiInProgress} value={summary.counts.in_progress} icon={Clock} />
+          <Kpi
+            label={t.dashboard.kpiOverdue}
+            value={summary.counts.overdue}
+            icon={AlertTriangle}
+            tone="danger"
+          />
+          <Kpi
+            label={t.dashboard.kpiExams}
+            value={summary.counts.upcoming_exams}
+            icon={GraduationCap}
+            tone="gold"
+          />
+        </section>
+      </div>
 
       {summary.counts.subjects === 0 && (
-        <div className="bg-ink text-ink-foreground flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white/12">
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,oklch(0.3_0.09_266),oklch(0.22_0.06_268))] p-5 text-white sm:flex-row sm:items-center sm:justify-between">
+          <div
+            aria-hidden
+            className="absolute -top-16 -right-10 size-48 rounded-full bg-[oklch(0.72_0.12_80/0.25)] blur-2xl"
+          />
+          <div className="relative flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/12">
               <BookOpen className="size-5" />
             </span>
             <div>
-              <p className="font-bold">Commence par ajouter ta première matière</p>
-              <p className="text-ink-foreground/70 text-sm">
-                Elle te permettra de classer tes devoirs et tes examens.
-              </p>
+              <p className="font-semibold">{t.dashboard.firstSubjectTitle}</p>
+              <p className="text-sm text-white/70">{t.dashboard.firstSubjectText}</p>
             </div>
           </div>
-          <Button onClick={addSubject} className="text-ink shrink-0 bg-white hover:bg-white/90">
-            <Plus /> Ajouter une matière
+          <Button
+            onClick={addSubject}
+            className="relative shrink-0 bg-white text-[oklch(0.25_0.06_267)] hover:bg-white/90"
+          >
+            <Plus /> {t.subjects.addFirst}
           </Button>
         </div>
       )}
 
-      <WeekStrip
-        weekStart={weekStart}
-        selected={selectedDay}
-        today={today}
-        busyDays={busyDays}
-        onSelect={selectDay}
-        onWeekChange={setWeekStart}
-      />
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-5 lg:col-span-8">
+          {/* Mobile: the next deadline comes first. Desktop: it heads the side column. */}
+          <div className="lg:hidden">
+            <NextUpCard summary={summary} />
+          </div>
+          <WeekStrip
+            weekStart={weekStart}
+            selected={selectedDay}
+            today={today}
+            busyDays={busyDays}
+            onSelect={selectDay}
+            onWeekChange={setWeekStart}
+          />
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className="grid grid-cols-1 gap-5">
-          <WeekProgressCard week={summary.week} />
-          <NextUpCard summary={summary} />
+          <Card>
+            <CardHeader className="flex-wrap">
+              <CardTitle>{t.dashboard.programme}</CardTitle>
+              <div className="flex items-center gap-2">
+                <Segmented label={t.dashboard.show} value={tab} onChange={setTab} options={tabs} />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-1">
+              {tab === "day" &&
+                (week.isPending ? (
+                  <Skeleton className="h-28" />
+                ) : dayItems.length === 0 ? (
+                  <EmptyState
+                    icon={CalendarDays}
+                    title={t.dashboard.nothingDay}
+                    bare
+                    className="py-8"
+                  />
+                ) : (
+                  <ul className="grid grid-cols-1 gap-0.5">
+                    {dayItems.map((entry) =>
+                      entry.kind === "assignment" ? assignmentRow(entry.item) : examRow(entry.item),
+                    )}
+                  </ul>
+                ))}
+
+              {tab === "upcoming" &&
+                (summary.upcoming_assignments.length === 0 ? (
+                  <EmptyState
+                    icon={ClipboardList}
+                    title={t.dashboard.noUpcoming}
+                    description={t.dashboard.noUpcomingText}
+                    action={
+                      <Button variant="secondary" onClick={addAssignment}>
+                        <Plus /> {t.assignments.addFirst}
+                      </Button>
+                    }
+                    bare
+                    className="py-8"
+                  />
+                ) : (
+                  <ul className="grid grid-cols-1 gap-0.5">
+                    {summary.upcoming_assignments.map(assignmentRow)}
+                  </ul>
+                ))}
+
+              {tab === "overdue" &&
+                (summary.overdue_assignments.length === 0 ? (
+                  <EmptyState
+                    icon={PartyPopper}
+                    title={t.dashboard.noOverdue}
+                    bare
+                    className="py-8"
+                  />
+                ) : (
+                  <ul className="grid grid-cols-1 gap-0.5">
+                    {summary.overdue_assignments.map(assignmentRow)}
+                  </ul>
+                ))}
+              <div className="mt-3 flex justify-end border-t pt-2">
+                <SeeAll href="/assignments" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Au programme</CardTitle>
-            <Button asChild variant="ghost" size="sm" className="text-muted-foreground -mr-2">
-              <Link href={tab === "exams" ? "/exams" : "/assignments"}>
-                Tout voir <ArrowRight />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <Segmented
-              label="Afficher"
-              value={tab}
-              onChange={setTab}
-              options={tabs}
-              className="mb-3"
-            />
-
-            {tab === "day" &&
-              (week.isPending ? (
-                <Skeleton className="h-32" />
-              ) : dayItems.length === 0 ? (
-                <EmptyState
-                  icon={CalendarDays}
-                  title="Rien de prévu ce jour-là"
-                  className="bg-secondary/50 border-0 py-8"
-                />
-              ) : (
-                <ul className="grid grid-cols-1 gap-1">
-                  {dayItems.map((entry) =>
-                    entry.kind === "assignment" ? assignmentRow(entry.item) : examRow(entry.item),
-                  )}
-                </ul>
-              ))}
-
-            {tab === "upcoming" &&
-              (summary.upcoming_assignments.length === 0 ? (
-                <EmptyState
-                  icon={ClipboardList}
-                  title="Aucun devoir à venir"
-                  description="Tout est à jour. Ajoute un devoir dès qu'un nouveau rendu est annoncé."
-                  action={
-                    <Button variant="secondary" onClick={addAssignment}>
-                      <Plus /> Ajouter un devoir
-                    </Button>
-                  }
-                  className="bg-secondary/50 border-0 py-8"
-                />
-              ) : (
-                <ul className="grid grid-cols-1 gap-1">
-                  {summary.upcoming_assignments.map(assignmentRow)}
-                </ul>
-              ))}
-
-            {tab === "overdue" &&
-              (summary.overdue_assignments.length === 0 ? (
-                <EmptyState
-                  icon={PartyPopper}
-                  title="Aucun retard, bravo !"
-                  className="bg-secondary/50 border-0 py-8"
-                />
-              ) : (
-                <ul className="grid grid-cols-1 gap-1">
-                  {summary.overdue_assignments.map(assignmentRow)}
-                </ul>
-              ))}
-
-            {tab === "exams" &&
-              (summary.upcoming_exams.length === 0 ? (
+        <div className="grid grid-cols-1 gap-5 lg:col-span-4">
+          <div className="hidden lg:block">
+            <NextUpCard summary={summary} />
+          </div>
+          <WeekProgressCard week={summary.week} />
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.dashboard.upcomingExams}</CardTitle>
+              <SeeAll href="/exams" />
+            </CardHeader>
+            <CardContent>
+              {summary.upcoming_exams.length === 0 ? (
                 <EmptyState
                   icon={GraduationCap}
-                  title="Aucun examen enregistré"
-                  description="Ajoute tes partiels pour les voir arriver."
-                  className="bg-secondary/50 border-0 py-8"
+                  title={t.dashboard.noExams}
+                  description={t.dashboard.noExamsText}
+                  action={
+                    <Button variant="secondary" size="sm" onClick={addExam}>
+                      <Plus /> {t.exams.addFirst}
+                    </Button>
+                  }
+                  bare
+                  className="py-6"
                 />
               ) : (
-                <ul className="grid grid-cols-1 gap-1">{summary.upcoming_exams.map(examRow)}</ul>
-              ))}
-          </CardContent>
-        </Card>
+                <ul className="grid grid-cols-1 gap-0.5">{summary.upcoming_exams.map(examRow)}</ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {assignmentDialogs.dialogs}
@@ -342,13 +455,22 @@ function DashboardContent({ summary }: { summary: DashboardSummary }) {
 }
 
 function DashboardSkeleton() {
+  const { t } = useI18n();
   return (
-    <div aria-busy="true" aria-label="Chargement du tableau de bord" className="grid gap-5">
-      <Skeleton className="h-16 w-64" />
-      <Skeleton className="h-28 rounded-3xl" />
-      <div className="grid gap-5 lg:grid-cols-[5fr_7fr]">
-        <Skeleton className="h-64 rounded-3xl" />
-        <Skeleton className="h-80 rounded-3xl" />
+    <div aria-busy="true" aria-label={t.dashboard.loading} className="grid gap-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:justify-between">
+        <Skeleton className="h-20 w-72" />
+        <Skeleton className="h-16 xl:w-[44rem]" />
+      </div>
+      <div className="grid gap-5 lg:grid-cols-12">
+        <div className="grid gap-5 lg:col-span-8">
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
+        <div className="grid gap-5 lg:col-span-4">
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-44 rounded-2xl" />
+        </div>
       </div>
     </div>
   );
@@ -357,8 +479,7 @@ function DashboardSkeleton() {
 export function DashboardView() {
   const dashboard = useDashboard();
   if (dashboard.isPending) return <DashboardSkeleton />;
-  if (dashboard.isError) {
+  if (dashboard.isError)
     return <ErrorState error={dashboard.error} onRetry={() => dashboard.refetch()} />;
-  }
   return <DashboardContent summary={dashboard.data} />;
 }

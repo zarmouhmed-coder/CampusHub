@@ -24,16 +24,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SubjectTile } from "@/features/subjects/subject-dot";
 import { errorMessage } from "@/lib/api-client";
-import { formatDateTime, formatRelative } from "@/lib/dates";
+import { useI18n } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 import { cn } from "@/lib/utils";
 import type { Assignment, AssignmentStatus } from "@/types/api";
 
 import { useUpdateAssignment } from "./api";
-import { PRIORITY_BADGE, PRIORITY_LABELS, STATUS_BADGE, STATUS_LABELS } from "./labels";
+import { PRIORITY_BADGE, STATUS_BADGE, STATUSES } from "./labels";
 
 const STATUS_ICONS = { todo: CircleDashed, in_progress: Clock, done: Check } as const;
 
 export function useSetAssignmentStatus() {
+  const { t } = useI18n();
   const update = useUpdateAssignment();
   return {
     pending: update.isPending,
@@ -43,16 +45,19 @@ export function useSetAssignmentStatus() {
         {
           onSuccess: () =>
             toast.success(
-              status === "done" ? "Bravo, devoir terminé !" : `Statut : ${STATUS_LABELS[status]}`,
+              status === "done" ? t.status.congrats : t.status.changed(t.status[status]),
             ),
-          onError: (error) => toast.error(errorMessage(error)),
+          onError: (error) => toast.error(errorMessage(error, t)),
         },
       ),
   };
 }
 
+export const isOverdue = (a: Assignment) => a.status !== "done" && new Date(a.due_at) < new Date();
+
 /** Round check button: empty (to do), amber ring (in progress), green (done). */
-function StatusCheck({ assignment }: { assignment: Assignment }) {
+export function StatusCheck({ assignment }: { assignment: Assignment }) {
+  const { t } = useI18n();
   const { setStatus, pending } = useSetAssignmentStatus();
   const done = assignment.status === "done";
   return (
@@ -60,24 +65,76 @@ function StatusCheck({ assignment }: { assignment: Assignment }) {
       type="button"
       onClick={() => setStatus(assignment, done ? "todo" : "done")}
       disabled={pending}
-      aria-label={
-        done ? `Marquer « ${assignment.title} » à faire` : `Marquer « ${assignment.title} » terminé`
-      }
+      aria-label={done ? t.status.markTodo(assignment.title) : t.status.markDone(assignment.title)}
       aria-pressed={done}
       className={cn(
-        "focus-visible:ring-ring grid size-6 shrink-0 place-items-center rounded-full border-2 transition-all focus-visible:ring-[3px] focus-visible:outline-none active:scale-90",
+        "focus-visible:ring-ring grid size-5 shrink-0 place-items-center rounded-full border-2 transition-all focus-visible:ring-[3px] focus-visible:outline-none active:scale-90",
         done
           ? "border-success bg-success text-white"
           : assignment.status === "in_progress"
             ? "border-warning hover:bg-warning/10"
-            : "border-border hover:border-success",
+            : "border-input hover:border-success",
       )}
     >
-      {done && <Check className="size-3.5" strokeWidth={3.5} />}
+      {done && <Check className="size-3" strokeWidth={3.5} />}
     </button>
   );
 }
 
+export function AssignmentActions({
+  assignment,
+  onEdit,
+  onDelete,
+}: {
+  assignment: Assignment;
+  onEdit?: (assignment: Assignment) => void;
+  onDelete?: (assignment: Assignment) => void;
+}) {
+  const { t } = useI18n();
+  const { setStatus } = useSetAssignmentStatus();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t.common.actionsFor(assignment.title)}
+          className="text-muted-foreground"
+        >
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel>{t.status.change}</DropdownMenuLabel>
+        {STATUSES.map((status) => {
+          const Icon = STATUS_ICONS[status];
+          return (
+            <DropdownMenuItem
+              key={status}
+              disabled={status === assignment.status}
+              onSelect={() => setStatus(assignment, status)}
+            >
+              <Icon /> {t.status[status]}
+            </DropdownMenuItem>
+          );
+        })}
+        <DropdownMenuSeparator />
+        {onEdit && (
+          <DropdownMenuItem onSelect={() => onEdit(assignment)}>
+            <Pencil /> {t.common.edit}
+          </DropdownMenuItem>
+        )}
+        {onDelete && (
+          <DropdownMenuItem variant="destructive" onSelect={() => onDelete(assignment)}>
+            <Trash2 /> {t.common.delete}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** One assignment as a row (mobile lists, dashboard). Desktop pages use a table instead. */
 export function AssignmentItem({
   assignment,
   onEdit,
@@ -90,29 +147,28 @@ export function AssignmentItem({
   onDelete?: (assignment: Assignment) => void;
   /** Relative dates ("demain à 23:59") and fewer badges. */
   compact?: boolean;
-  /** "card": standalone white card. "plain": row inside an existing card. */
+  /** "card": standalone raised card. "plain": row inside an existing card. */
   surface?: "card" | "plain";
 }) {
-  const { setStatus } = useSetAssignmentStatus();
+  const { t } = useI18n();
+  const fmt = useFormat();
   const done = assignment.status === "done";
-  const overdue = !done && new Date(assignment.due_at) < new Date();
+  const overdue = isOverdue(assignment);
 
   return (
     <li
       className={cn(
-        "flex items-center gap-3 rounded-2xl py-2.5 transition-colors",
-        surface === "card"
-          ? "bg-card shadow-card px-3 sm:px-4"
-          : "hover:bg-secondary/70 -mx-2 px-2",
+        "flex items-center gap-3 rounded-xl py-2 transition-colors",
+        surface === "card" ? "soft px-3" : "hover:bg-surface -mx-2 px-2",
       )}
     >
       <StatusCheck assignment={assignment} />
-      <SubjectTile color={assignment.subject?.color} icon={ClipboardList} />
+      <SubjectTile color={assignment.subject?.color} icon={ClipboardList} className="size-9" />
 
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "truncate text-[0.94rem] font-semibold",
+            "truncate text-sm font-semibold",
             done && "text-muted-foreground line-through decoration-2",
           )}
         >
@@ -121,14 +177,14 @@ export function AssignmentItem({
         <p className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1.5 text-xs">
           <time
             dateTime={assignment.due_at}
-            title={formatDateTime(assignment.due_at)}
+            title={fmt.dateTime(assignment.due_at)}
             className={cn("shrink-0", overdue && "text-destructive font-semibold")}
           >
-            {overdue ? "En retard · " : ""}
-            {compact ? formatRelative(assignment.due_at) : formatDateTime(assignment.due_at)}
+            {overdue ? `${t.assignments.overdue} · ` : ""}
+            {compact ? fmt.relative(assignment.due_at) : fmt.dateTime(assignment.due_at)}
           </time>
           <span aria-hidden>·</span>
-          <span className="truncate">{assignment.subject?.name ?? "Sans matière"}</span>
+          <span className="truncate">{assignment.subject?.name ?? t.common.noSubject}</span>
         </p>
       </div>
 
@@ -136,58 +192,21 @@ export function AssignmentItem({
         {assignment.priority === "high" && !done && (
           <Flag
             className="fill-destructive/15 text-destructive size-4 sm:hidden"
-            aria-label="Priorité élevée"
+            aria-label={t.priority.highAria}
           />
         )}
         {(assignment.priority === "high" || !compact) && (
           <Badge variant={PRIORITY_BADGE[assignment.priority]} className="hidden sm:inline-flex">
-            {PRIORITY_LABELS[assignment.priority]}
+            {t.priority[assignment.priority]}
           </Badge>
         )}
         {!compact && (
           <Badge variant={STATUS_BADGE[assignment.status]} className="hidden sm:inline-flex">
-            {STATUS_LABELS[assignment.status]}
+            {t.status[assignment.status]}
           </Badge>
         )}
         {(onEdit || onDelete) && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Actions pour ${assignment.title}`}
-                className="text-muted-foreground"
-              >
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuLabel>Changer le statut</DropdownMenuLabel>
-              {(Object.keys(STATUS_LABELS) as AssignmentStatus[]).map((status) => {
-                const Icon = STATUS_ICONS[status];
-                return (
-                  <DropdownMenuItem
-                    key={status}
-                    disabled={status === assignment.status}
-                    onSelect={() => setStatus(assignment, status)}
-                  >
-                    <Icon /> {STATUS_LABELS[status]}
-                  </DropdownMenuItem>
-                );
-              })}
-              <DropdownMenuSeparator />
-              {onEdit && (
-                <DropdownMenuItem onSelect={() => onEdit(assignment)}>
-                  <Pencil /> Modifier
-                </DropdownMenuItem>
-              )}
-              {onDelete && (
-                <DropdownMenuItem variant="destructive" onSelect={() => onDelete(assignment)}>
-                  <Trash2 /> Supprimer
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <AssignmentActions assignment={assignment} onEdit={onEdit} onDelete={onDelete} />
         )}
       </div>
     </li>

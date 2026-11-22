@@ -9,22 +9,19 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/segmented";
 import { SubjectSelect } from "@/features/subjects/subject-select";
+import { useI18n } from "@/lib/i18n";
 import type { AssignmentStatus, Priority } from "@/types/api";
 
 import { useAssignments, type AssignmentFilters } from "./api";
 import { AssignmentItem } from "./assignment-item";
-import { PRIORITY_LABELS } from "./labels";
+import { AssignmentsTable } from "./assignments-table";
+import { PRIORITIES } from "./labels";
 import { useAssignmentDialogs } from "./use-assignment-dialogs";
 
 const PAGE_SIZE = 20;
-const STATUS_OPTIONS = [
-  { value: "all", label: "Tous" },
-  { value: "todo", label: "À faire" },
-  { value: "in_progress", label: "En cours" },
-  { value: "done", label: "Terminés" },
-] as const;
 
 export function AssignmentsView() {
+  const { t } = useI18n();
   const [filters, setFilters] = useState<AssignmentFilters>({
     order: "asc",
     limit: PAGE_SIZE,
@@ -37,102 +34,111 @@ export function AssignmentsView() {
   const update = (patch: Partial<AssignmentFilters>) =>
     setFilters((f) => ({ ...f, offset: 0, ...patch }));
   const hasFilters = Boolean(filters.status || filters.priority || filters.subject_id);
+  const statusOptions = [
+    { value: "all", label: t.assignments.all },
+    { value: "todo", label: t.status.todo },
+    { value: "in_progress", label: t.status.in_progress },
+    { value: "done", label: t.assignments.doneFilter },
+  ] as const;
 
   return (
     <>
       <PageHeader
-        title="Devoirs"
-        description="Devoirs, TP et projets, triés par échéance."
+        title={t.assignments.title}
+        description={t.assignments.description}
+        meta={assignments.data ? t.assignments.count(assignments.data.total) : undefined}
         actions={
           <Button onClick={openCreate}>
-            <Plus /> Nouveau devoir
+            <Plus /> {t.assignments.new}
           </Button>
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <Segmented
-          label="Filtrer par statut"
+          label={t.assignments.filterStatus}
           value={filters.status ?? "all"}
           onChange={(v) => update({ status: v === "all" ? undefined : (v as AssignmentStatus) })}
-          options={STATUS_OPTIONS}
-          className="w-full overflow-x-auto sm:w-auto"
+          options={statusOptions}
         />
         <div className="grid grid-cols-2 gap-2 sm:flex">
           <NativeSelect
-            aria-label="Filtrer par priorité"
+            aria-label={t.assignments.filterPriority}
             value={filters.priority ?? ""}
             onChange={(e) => update({ priority: (e.target.value || undefined) as Priority })}
-            className="sm:w-40"
+            className="sm:w-44"
           >
-            <option value="">Toutes priorités</option>
-            {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+            <option value="">{t.assignments.allPriorities}</option>
+            {PRIORITIES.map((value) => (
               <option key={value} value={value}>
-                Priorité {label.toLowerCase()}
+                {t.assignments.priorityOption(t.priority[value])}
               </option>
             ))}
           </NativeSelect>
           <SubjectSelect
-            aria-label="Filtrer par matière"
-            emptyLabel="Toutes matières"
+            aria-label={t.subjects.filterLabel}
+            emptyLabel={t.subjects.filterAll}
             value={filters.subject_id ?? ""}
             onChange={(e) => update({ subject_id: e.target.value || undefined })}
-            className="sm:w-44"
+            className="sm:w-48"
           />
           <Button
-            variant="outline"
-            className="col-span-2 sm:col-span-1"
+            variant="secondary"
+            className="col-span-2 h-10 sm:col-span-1"
             onClick={() => update({ order: filters.order === "asc" ? "desc" : "asc" })}
-            aria-label={
-              filters.order === "asc"
-                ? "Tri : échéance la plus proche d'abord"
-                : "Tri : échéance la plus lointaine d'abord"
-            }
+            aria-label={filters.order === "asc" ? t.assignments.sortAsc : t.assignments.sortDesc}
           >
             {filters.order === "asc" ? <ArrowUpNarrowWide /> : <ArrowDownWideNarrow />}
-            Échéance
+            {t.assignments.sortDue}
           </Button>
         </div>
       </div>
 
       {assignments.isPending ? (
-        <ListSkeleton rows={5} />
+        <ListSkeleton rows={6} />
       ) : assignments.isError ? (
         <ErrorState error={assignments.error} onRetry={() => assignments.refetch()} />
       ) : assignments.data.items.length === 0 ? (
         hasFilters ? (
           <EmptyState
             icon={ClipboardList}
-            title="Aucun devoir ne correspond à ces filtres"
+            title={t.assignments.emptyFiltered}
             action={
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() =>
                   update({ status: undefined, priority: undefined, subject_id: undefined })
                 }
               >
-                Réinitialiser les filtres
+                {t.common.resetFilters}
               </Button>
             }
           />
         ) : (
           <EmptyState
             icon={ClipboardList}
-            title="Aucun devoir pour l'instant"
-            description="Ajoute tes devoirs, TP et projets pour ne plus rater une échéance."
+            title={t.assignments.emptyTitle}
+            description={t.assignments.emptyText}
             action={
               <Button onClick={openCreate}>
-                <Plus /> Ajouter un devoir
+                <Plus /> {t.assignments.addFirst}
               </Button>
             }
           />
         )
       ) : (
-        <>
-          <ul
-            className="grid grid-cols-1 gap-2 transition-opacity data-[stale=true]:opacity-60"
-            data-stale={assignments.isPlaceholderData}
-          >
+        <div
+          className="transition-opacity data-[stale=true]:opacity-60"
+          data-stale={assignments.isPlaceholderData}
+        >
+          <div className="hidden md:block">
+            <AssignmentsTable
+              items={assignments.data.items}
+              onEdit={openEdit}
+              onDelete={askDelete}
+            />
+          </div>
+          <ul className="grid grid-cols-1 gap-2 md:hidden">
             {assignments.data.items.map((a) => (
               <AssignmentItem key={a.id} assignment={a} onEdit={openEdit} onDelete={askDelete} />
             ))}
@@ -143,7 +149,7 @@ export function AssignmentsView() {
             offset={filters.offset}
             onChange={(offset) => setFilters((f) => ({ ...f, offset }))}
           />
-        </>
+        </div>
       )}
 
       {dialogs}

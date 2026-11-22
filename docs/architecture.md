@@ -66,7 +66,7 @@ Voir `docs/decisions.md` (D2). En résumé : inscription ou connexion → l'API 
 
 ## Dates
 
-L'API reçoit et renvoie des instants ISO 8601 avec fuseau, stockés en `timestamptz` et toujours relus en UTC (`timezone=UTC` à la connexion). L'interface affiche et saisit les dates en heure de Paris, quel que soit le fuseau du navigateur (`frontend/lib/dates.ts`, testé y compris aux changements d'heure).
+L'API reçoit et renvoie des instants ISO 8601 avec fuseau, stockés en `timestamptz` et toujours relus en UTC (`timezone=UTC` à la connexion). L'interface affiche et saisit les dates dans le fuseau du profil de l'utilisateur (`profiles.timezone`), quel que soit celui du navigateur (`frontend/lib/dates.ts`, testé aux changements d'heure et pour plusieurs fuseaux africains).
 
 ## API
 
@@ -80,8 +80,8 @@ Toutes les routes sont préfixées par `/api/v1`. La documentation OpenAPI inter
 | Matières | `GET/POST /subjects`, `GET/PATCH/DELETE /subjects/{id}` |
 | Devoirs | `GET/POST /assignments`, `GET/PATCH/DELETE /assignments/{id}` ; filtres `status`, `priority`, `subject_id`, `due_after` (inclus), `due_before` (exclu), `order=asc\|desc`, `limit` (1-100), `offset` |
 | Examens | `GET/POST /exams`, `GET/PATCH/DELETE /exams/{id}` ; filtres `when=all\|upcoming\|past`, `subject_id`, `after` (inclus), `before` (exclu), `limit`, `offset` |
-| Tableau de bord | `GET /dashboard/summary` : prochains devoirs, retards, prochains examens, compteurs et progression de la semaine calendaire (lundi-dimanche, heure de Paris) |
+| Tableau de bord | `GET /dashboard/summary` : prochains devoirs, retards, prochains examens, compteurs et progression de la semaine calendaire (lundi-dimanche, fuseau de l'utilisateur) |
 
-Les listes paginées renvoient `{items, total, limit, offset}`. Les erreurs ont toujours la forme `{"detail": …}` : un message (401, 403, 404, 409, 429, 500) ou la liste des erreurs de validation (422).
+Les listes paginées renvoient `{items, total, limit, offset}`. Les erreurs ont toujours la forme `{"code": …, "detail": …}`. `code` est stable et traduit par l'interface (`auth_required`, `invalid_credentials`, `too_many_attempts`, `email_taken`, `subject_name_taken`, `subject_not_found`, `not_found`, `origin_forbidden`, `validation_error`, `internal_error`) ; `detail` est un message anglais destiné aux développeurs, ou la liste des champs invalides pour `validation_error` (422).
 
 Codes utilisés : 200, 201 (création), 204 (suppression, déconnexion), 401, 403 (origine refusée), 404, 409 (e-mail ou nom de matière déjà pris), 422, 429 (trop de tentatives de connexion), 500 (message générique, détails uniquement dans les logs).

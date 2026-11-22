@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import { browserTimeZone } from "@/lib/dates";
+import type { Locale } from "@/lib/i18n";
 import type { User } from "@/types/api";
 
 import type { LoginValues, RegisterValues } from "./schemas";
@@ -39,7 +41,9 @@ export function useLogin() {
 export function useRegister() {
   const onSuccess = useAuthSuccess();
   return useMutation({
-    mutationFn: (values: RegisterValues) => api.post<User>("/auth/register", values),
+    // The browser's language and timezone become the profile defaults.
+    mutationFn: (values: RegisterValues & { locale: Locale }) =>
+      api.post<User>("/auth/register", { ...values, timezone: browserTimeZone() }),
     onSuccess,
   });
 }

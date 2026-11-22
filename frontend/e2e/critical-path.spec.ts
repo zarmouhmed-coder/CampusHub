@@ -1,13 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { toParisInputValue } from "../lib/dates";
+import { toZonedInputValue } from "../lib/dates";
 
 /** The mandatory manual test path of the specification, automated. */
 
 const PASSWORD = "motdepasse-solide";
 const inDays = (days: number, hour = 18) => {
   const date = new Date(Date.now() + days * 86_400_000);
-  return `${toParisInputValue(date.toISOString()).slice(0, 11)}${String(hour).padStart(2, "0")}:00`;
+  return `${toZonedInputValue(date.toISOString(), "Europe/Paris").slice(0, 11)}${String(hour).padStart(2, "0")}:00`;
 };
 
 /**
@@ -15,10 +15,6 @@ const inDays = (days: number, hour = 18) => {
  * so text lookups must target visible elements only.
  */
 const seen = (page: Page, text: string) => page.getByText(text).filter({ visible: true }).first();
-
-/** Dashboard list filter chips ("À venir", "Examens"…). */
-const chip = (page: Page, name: string) =>
-  page.getByRole("radio", { name: new RegExp(`^${name}`) }).click();
 
 async function openProfile(page: Page, mobile: boolean) {
   if (mobile) {
@@ -67,7 +63,6 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   ).toBeVisible();
   await expect(seen(page, "Commence par ajouter ta première matière")).toBeVisible();
   await expect(seen(page, "Aucun devoir à venir")).toBeVisible();
-  await chip(page, "Examens");
   await expect(seen(page, "Aucun examen enregistré")).toBeVisible();
 
   // 2. Logs out and back in (wrong password first).
@@ -130,10 +125,8 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   // 7. Finds them on the dashboard.
   await navigate(page, "Accueil");
   await expect(seen(page, "TP sockets")).toBeVisible();
-  await chip(page, "Examens");
   await expect(seen(page, "Partiel réseaux")).toBeVisible();
   await expect(seen(page, "Amphi Nord")).toBeVisible();
-  await chip(page, "À venir");
 
   // 8. Changes the assignment status: done items leave the upcoming list.
   await page.getByRole("button", { name: "Marquer « TP sockets » terminé" }).click();
@@ -141,7 +134,6 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   await expect(seen(page, "Aucun devoir à venir")).toBeVisible();
 
   // 9. Edits an exam, then deletes the assignment (with confirmation).
-  await chip(page, "Examens");
   await page.getByRole("button", { name: "Actions pour Partiel réseaux" }).click();
   await page.getByRole("menuitem", { name: "Modifier" }).click();
   await page.getByRole("dialog").getByLabel("Salle").fill("Salle 2.12");
@@ -158,6 +150,16 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   const examsResponse = await page.request.get("/api/v1/exams");
   const examId: string = (await examsResponse.json()).items[0].id;
 
+  // Language: switching to English in the profile translates the interface and is saved.
+  await openProfile(page, mobile);
+  await page.getByLabel("Langue").selectOption("en");
+  await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();
+  expect((await (await page.request.get("/api/v1/auth/me")).json()).locale).toBe("en");
+  await page.getByLabel("Language").selectOption("fr");
+  await expect(page.getByRole("heading", { name: "Profil", exact: true })).toBeVisible();
+
   // 10. Logs out. 11. Private pages are no longer reachable.
   await logout(page);
   for (const path of ["/dashboard", "/subjects", "/assignments", "/exams", "/profile"]) {
@@ -170,7 +172,6 @@ test("critical path: account, profile, subject, assignment, exam, dashboard, iso
   const other = await browser.newContext();
   const pageB = await other.newPage();
   await register(pageB, "Bob", `bob-${suffix}@telecomnancy.eu`);
-  await chip(pageB, "Examens");
   await expect(seen(pageB, "Aucun examen enregistré")).toBeVisible();
   await expect(pageB.getByText("Partiel réseaux").filter({ visible: true })).toHaveCount(0);
   expect((await pageB.request.get(`/api/v1/exams/${examId}`)).status()).toBe(404);

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -18,10 +18,12 @@ import { Field, fieldA11y, FormError } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { SubjectSelect } from "@/features/subjects/subject-select";
 import { applyApiError } from "@/lib/form-errors";
+import { useI18n } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 import type { Exam } from "@/types/api";
 
 import { useCreateExam, useUpdateExam } from "./api";
-import { examSchema, toExamFormValues, toExamInput, type ExamFormValues } from "./schemas";
+import { makeExamSchema, toExamFormValues, toExamInput, type ExamFormValues } from "./schemas";
 
 const FIELDS = ["title", "subject_id", "exam_at", "room", "description"] as const;
 
@@ -34,31 +36,34 @@ export function ExamFormDialog({
   onOpenChange: (open: boolean) => void;
   exam?: Exam;
 }) {
+  const { t } = useI18n();
+  const fmt = useFormat();
   const create = useCreateExam();
   const update = useUpdateExam();
+  const schema = useMemo(() => makeExamSchema(t), [t]);
   const form = useForm<ExamFormValues>({
-    resolver: zodResolver(examSchema),
-    defaultValues: toExamFormValues(exam),
+    resolver: zodResolver(schema),
+    defaultValues: toExamFormValues(fmt, exam),
   });
   const { errors, isSubmitting } = form.formState;
 
   useEffect(() => {
-    if (open) form.reset(toExamFormValues(exam));
-  }, [open, exam, form]);
+    if (open) form.reset(toExamFormValues(fmt, exam));
+  }, [open, exam, form, fmt]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      const input = toExamInput(values);
+      const input = toExamInput(fmt, values);
       if (exam) {
         await update.mutateAsync({ id: exam.id, input });
-        toast.success("Examen mis à jour");
+        toast.success(t.exams.updated);
       } else {
         await create.mutateAsync(input);
-        toast.success("Examen ajouté");
+        toast.success(t.exams.created);
       }
       onOpenChange(false);
     } catch (error) {
-      applyApiError(error, form.setError, FIELDS);
+      applyApiError(error, form.setError, FIELDS, t, { subject_not_found: "subject_id" });
     }
   });
 
@@ -66,14 +71,14 @@ export function ExamFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{exam ? "Modifier l'examen" : "Nouvel examen"}</DialogTitle>
-          <DialogDescription>Partiel, contrôle continu, oral…</DialogDescription>
+          <DialogTitle>{exam ? t.exams.edit : t.exams.new}</DialogTitle>
+          <DialogDescription>{t.exams.dialogDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} noValidate className="grid gap-4">
           <FormError message={errors.root?.server?.message} />
-          <Field id="exam-title" label="Titre" error={errors.title?.message}>
+          <Field id="exam-title" label={t.exams.titleLabel} error={errors.title?.message}>
             <Input
-              placeholder="Ex. Partiel de probabilités"
+              placeholder={t.exams.titlePlaceholder}
               autoFocus
               {...fieldA11y("exam-title", errors.title?.message)}
               {...form.register("title")}
@@ -82,8 +87,8 @@ export function ExamFormDialog({
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <Field
               id="exam-at"
-              label="Date et heure"
-              hint="Heure de Paris"
+              label={t.exams.date}
+              hint={t.assignments.dueHint(fmt.timeZone)}
               error={errors.exam_at?.message}
             >
               <Input
@@ -92,39 +97,39 @@ export function ExamFormDialog({
                 {...form.register("exam_at")}
               />
             </Field>
-            <Field id="exam-subject" label="Matière" error={errors.subject_id?.message}>
+            <Field id="exam-subject" label={t.exams.subject} error={errors.subject_id?.message}>
               <SubjectSelect
                 {...fieldA11y("exam-subject", errors.subject_id?.message)}
                 {...form.register("subject_id")}
               />
             </Field>
           </div>
-          <Field id="exam-room" label="Salle" optional error={errors.room?.message}>
+          <Field id="exam-room" label={t.exams.room} optional error={errors.room?.message}>
             <Input
-              placeholder="Ex. Amphi Nord"
+              placeholder={t.exams.roomPlaceholder}
               {...fieldA11y("exam-room", errors.room?.message)}
               {...form.register("room")}
             />
           </Field>
           <Field
             id="exam-description"
-            label="Description"
+            label={t.exams.descriptionLabel}
             optional
             error={errors.description?.message}
           >
             <Textarea
               rows={3}
-              placeholder="Chapitres à réviser, documents autorisés…"
+              placeholder={t.exams.descriptionPlaceholder}
               {...fieldA11y("exam-description", errors.description?.message)}
               {...form.register("description")}
             />
           </Field>
           <DialogFooter className="mt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Enregistrement…" : exam ? "Enregistrer" : "Ajouter l'examen"}
+              {isSubmitting ? t.common.saving : exam ? t.common.save : t.exams.create}
             </Button>
           </DialogFooter>
         </form>

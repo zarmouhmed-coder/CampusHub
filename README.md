@@ -7,14 +7,17 @@ V0.1, pensée d'abord pour les étudiants de Télécom Nancy.
 ## Fonctionnalités (V0.1)
 
 - **Comptes** : inscription, connexion, déconnexion, session par cookie `HttpOnly`, pages privées protégées.
-- **Profil** : prénom, promotion, année, spécialité, groupes de TD et de TP (seul le prénom est obligatoire).
+- **Profil** : prénom, promotion, année, spécialité, groupes de TD et de TP (seul le prénom est obligatoire) ; préférences de langue, de fuseau horaire et de thème.
 - **Matières** : création, modification, suppression, couleur. Supprimer une matière **conserve** ses devoirs et examens (ils passent « sans matière »).
 - **Devoirs** (devoirs, TP, projets) : échéance, priorité, statut (à faire, en cours, terminé), matière ; tri par échéance, filtres par statut, priorité et matière, pagination ; changement de statut en un clic.
 - **Examens** : date et heure, salle, matière, description ; vues « À venir » et « Passés ».
-- **Tableau de bord** : message d'accueil, bande des jours de la semaine, jauge de progression de la semaine, prochaine échéance avec action directe, listes « Aujourd'hui / À venir / En retard / Examens », états vides utiles.
+- **Tableau de bord** : indicateurs compacts, bande des jours de la semaine, liste « Aujourd'hui / À venir / En retard », prochaine échéance avec action directe, jauge de la semaine calendaire, prochains examens, états vides utiles.
 - **Ajout rapide** : bouton « + » accessible depuis toutes les pages (barre inférieure sur mobile).
 - **Isolation stricte** : un étudiant ne peut ni lire, ni modifier, ni supprimer les données d'un autre, y compris en modifiant un identifiant dans l'URL (vérifié par des tests).
-- Interface responsive : barre latérale sur ordinateur, navigation inférieure sur mobile.
+- **Français et anglais** : langue détectée à l'arrivée, modifiable à tout moment et enregistrée dans le profil.
+- **Fuseau horaire par utilisateur** : dates, « aujourd'hui » et « cette semaine » calculés dans le fuseau du profil (Dakar, Lagos, Nairobi, Paris…).
+- **Thèmes clair, sombre et système.**
+- Interface responsive : barre latérale en verre (repliable) et tableaux denses sur ordinateur, navigation inférieure avec ajout rapide sur mobile. Voir [docs/design-system.md](docs/design-system.md).
 
 Hors périmètre de la V0.1 : notes, emploi du temps, notifications, IA, connexion Google/Microsoft… (voir [Roadmap](#roadmap)).
 
@@ -22,7 +25,7 @@ Hors périmètre de la V0.1 : notes, emploi du temps, notifications, IA, connexi
 
 | Couche | Technologies |
 | --- | --- |
-| Frontend | Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS 4, composants façon shadcn/ui (Radix), police Plus Jakarta Sans, Lucide, TanStack Query, React Hook Form + Zod |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS 4, composants façon shadcn/ui (Radix), polices Fraunces et Inter (embarquées), Lucide, traduction sans dépendance (FR/EN), TanStack Query, React Hook Form + Zod |
 | Backend | Python 3.13, FastAPI, Pydantic 2, SQLAlchemy 2, Alembic, Argon2id |
 | Base de données | PostgreSQL 16 |
 | Qualité | Pytest, Ruff, mypy (strict), ESLint, Prettier, Vitest, Playwright |
@@ -51,7 +54,7 @@ frontend/
   app/            routes Next.js : (auth)/login, (auth)/register, (app)/dashboard…
   features/       une fonctionnalité = ses hooks API, schémas Zod et composants
   components/     UI générique (components/ui) et mise en page
-  lib/            client API, dates (Europe/Paris), cache de requêtes
+  lib/            client API, traductions (i18n/), dates et fuseaux, thème, cache de requêtes
   types/          types des réponses de l'API
   e2e/            parcours critique Playwright
 ```

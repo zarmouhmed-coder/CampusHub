@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -17,15 +17,15 @@ import {
 } from "@/components/ui/dialog";
 import { Field, fieldA11y, FormError } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
-import { ApiError } from "@/lib/api-client";
 import { applyApiError } from "@/lib/form-errors";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Subject } from "@/types/api";
 
 import { useCreateSubject, useUpdateSubject } from "./api";
 import {
+  makeSubjectSchema,
   SUBJECT_COLORS,
-  subjectSchema,
   toSubjectFormValues,
   toSubjectInput,
   type SubjectFormValues,
@@ -41,10 +41,12 @@ export function SubjectFormDialog({
   /** Edit mode when provided. */
   subject?: Subject;
 }) {
+  const { t } = useI18n();
   const create = useCreateSubject();
   const update = useUpdateSubject();
+  const schema = useMemo(() => makeSubjectSchema(t), [t]);
   const form = useForm<SubjectFormValues>({
-    resolver: zodResolver(subjectSchema),
+    resolver: zodResolver(schema),
     defaultValues: toSubjectFormValues(subject),
   });
   const { errors, isSubmitting } = form.formState;
@@ -59,18 +61,16 @@ export function SubjectFormDialog({
       const input = toSubjectInput(values);
       if (subject) {
         await update.mutateAsync({ id: subject.id, input });
-        toast.success("Matière mise à jour");
+        toast.success(t.subjects.updated);
       } else {
         await create.mutateAsync(input);
-        toast.success("Matière créée");
+        toast.success(t.subjects.created);
       }
       onOpenChange(false);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        form.setError("name", { message: error.message });
-      } else {
-        applyApiError(error, form.setError, ["name", "description", "color"]);
-      }
+      applyApiError(error, form.setError, ["name", "description", "color"], t, {
+        subject_name_taken: "name",
+      });
     }
   });
 
@@ -78,16 +78,14 @@ export function SubjectFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{subject ? "Modifier la matière" : "Nouvelle matière"}</DialogTitle>
-          <DialogDescription>
-            Les matières servent à classer tes devoirs et tes examens.
-          </DialogDescription>
+          <DialogTitle>{subject ? t.subjects.edit : t.subjects.new}</DialogTitle>
+          <DialogDescription>{t.subjects.dialogDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} noValidate className="grid gap-4">
           <FormError message={errors.root?.server?.message} />
-          <Field id="subject-name" label="Nom" error={errors.name?.message}>
+          <Field id="subject-name" label={t.subjects.name} error={errors.name?.message}>
             <Input
-              placeholder="Ex. Réseaux, Probabilités, Java…"
+              placeholder={t.subjects.namePlaceholder}
               autoFocus
               {...fieldA11y("subject-name", errors.name?.message)}
               {...form.register("name")}
@@ -95,31 +93,31 @@ export function SubjectFormDialog({
           </Field>
           <Field
             id="subject-description"
-            label="Description"
+            label={t.subjects.descriptionLabel}
             optional
             error={errors.description?.message}
           >
             <Textarea
               rows={3}
-              placeholder="Enseignant, modalités d'évaluation…"
+              placeholder={t.subjects.descriptionPlaceholder}
               {...fieldA11y("subject-description", errors.description?.message)}
               {...form.register("description")}
             />
           </Field>
-          <fieldset className="grid grid-cols-1 gap-2">
-            <legend className="mb-2 text-sm font-medium">Couleur</legend>
+          <fieldset className="grid gap-2">
+            <legend className="mb-2 text-sm font-medium">{t.subjects.color}</legend>
             <div className="flex flex-wrap gap-2">
-              {SUBJECT_COLORS.map(({ value, label }) => (
+              {SUBJECT_COLORS.map(({ value, key }) => (
                 <label key={value} className="relative">
                   <input
                     type="radio"
                     value={value}
                     className="peer sr-only"
-                    aria-label={label}
+                    aria-label={t.subjects.colors[key]}
                     {...form.register("color")}
                   />
                   <span
-                    className="ring-offset-popover peer-focus-visible:ring-primary grid size-8 place-items-center rounded-full ring-offset-2 transition-shadow peer-focus-visible:ring-2"
+                    className="ring-offset-popover peer-focus-visible:ring-primary grid size-8 place-items-center rounded-full shadow-[inset_0_1px_0_oklch(1_0_0/0.3)] ring-offset-2 transition-transform peer-focus-visible:ring-2 hover:scale-110"
                     style={{ backgroundColor: value }}
                   >
                     <Check
@@ -135,11 +133,11 @@ export function SubjectFormDialog({
             </div>
           </fieldset>
           <DialogFooter className="mt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Enregistrement…" : subject ? "Enregistrer" : "Créer la matière"}
+              {isSubmitting ? t.common.saving : subject ? t.common.save : t.subjects.create}
             </Button>
           </DialogFooter>
         </form>

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api-client";
-import { addDays, dayStartIso } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
 import { queryKeys } from "@/lib/query-keys";
 import type { Assignment, DashboardSummary, Exam, Page } from "@/types/api";
 
@@ -16,11 +16,11 @@ export function useDashboard() {
   });
 }
 
-/** Every assignment and exam of a calendar week (Monday key), for the week strip. */
-export function useWeekItems(weekStart: string) {
-  const range = { after: dayStartIso(weekStart), before: dayStartIso(addDays(weekStart, 7)) };
+/** Every assignment and exam of a calendar week (Monday key), in the user's timezone. */
+export function useWeekItems(weekStart: string, dayStart: (key: string) => string) {
+  const range = { after: dayStart(weekStart), before: dayStart(addDays(weekStart, 7)) };
   const assignments = useQuery({
-    queryKey: queryKeys.assignments.list({ week: weekStart }),
+    queryKey: queryKeys.assignments.list({ week: range.after }),
     queryFn: ({ signal }) =>
       api.get<Page<Assignment>>(
         "/assignments",
@@ -29,7 +29,7 @@ export function useWeekItems(weekStart: string) {
       ),
   });
   const exams = useQuery({
-    queryKey: queryKeys.exams.list({ week: weekStart }),
+    queryKey: queryKeys.exams.list({ week: range.after }),
     queryFn: ({ signal }) => api.get<Page<Exam>>("/exams", { ...range, limit: 100 }, signal),
   });
   return {

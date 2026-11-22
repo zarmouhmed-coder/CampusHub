@@ -1,61 +1,62 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Field, fieldA11y, FormError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { applyApiError } from "@/lib/form-errors";
+import { useI18n } from "@/lib/i18n";
 
 import { useRegister } from "./api";
-import { registerSchema, type RegisterValues } from "./schemas";
+import { makeRegisterSchema, type RegisterValues } from "./schemas";
 
 export function RegisterForm() {
+  const { t, locale } = useI18n();
   const register = useRegister();
+  const schema = useMemo(() => makeRegisterSchema(t), [t]);
   const form = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(schema),
     defaultValues: { first_name: "", email: "", password: "" },
   });
   const { errors, isSubmitting } = form.formState;
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      await register.mutateAsync(values);
+      await register.mutateAsync({ ...values, locale });
     } catch (error) {
-      // 409 "e-mail already used" belongs next to the e-mail field.
-      if (error instanceof Error && "status" in error && error.status === 409) {
-        form.setError("email", { message: error.message });
-      } else {
-        applyApiError(error, form.setError, ["first_name", "email", "password"]);
-      }
+      applyApiError(error, form.setError, ["first_name", "email", "password"], t, {
+        email_taken: "email",
+      });
     }
   });
 
   return (
     <form onSubmit={onSubmit} noValidate className="grid gap-4">
       <FormError message={errors.root?.server?.message} />
-      <Field id="first_name" label="Prénom" error={errors.first_name?.message}>
+      <Field id="first_name" label={t.auth.firstName} error={errors.first_name?.message}>
         <Input
           autoComplete="given-name"
           {...fieldA11y("first_name", errors.first_name?.message)}
           {...form.register("first_name")}
         />
       </Field>
-      <Field id="email" label="Adresse e-mail" error={errors.email?.message}>
+      <Field id="email" label={t.auth.email} error={errors.email?.message}>
         <Input
           type="email"
           autoComplete="email"
           inputMode="email"
-          placeholder="prenom.nom@telecomnancy.eu"
+          placeholder={t.auth.emailPlaceholder}
           {...fieldA11y("email", errors.email?.message)}
           {...form.register("email")}
         />
       </Field>
       <Field
         id="password"
-        label="Mot de passe"
-        hint="8 caractères minimum."
+        label={t.auth.password}
+        hint={t.auth.passwordHint}
         error={errors.password?.message}
       >
         <Input
@@ -67,11 +68,11 @@ export function RegisterForm() {
       </Field>
       <Button
         type="submit"
-        className="mt-2 w-full"
         size="lg"
+        className="mt-2 w-full"
         disabled={isSubmitting || register.isSuccess}
       >
-        {isSubmitting || register.isSuccess ? "Création du compte…" : "Créer mon compte"}
+        {isSubmitting || register.isSuccess ? t.auth.registering : t.auth.registerSubmit}
       </Button>
     </form>
   );

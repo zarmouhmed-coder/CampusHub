@@ -3,8 +3,8 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Single-choice filter rendered as pill chips (radio group semantics).
- * The selected chip is "ink" (near black); the row scrolls horizontally on mobile.
+ * Soft UI segmented control (radio group semantics): a recessed track with a
+ * raised "thumb" on the selected option. Scrolls horizontally on small screens.
  */
 export function Segmented<T extends string>({
   value,
@@ -23,7 +23,10 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("-mx-1 flex scrollbar-none gap-2 overflow-x-auto px-1 py-0.5", className)}
+      className={cn(
+        "soft-inset inline-flex max-w-full scrollbar-none gap-0.5 overflow-x-auto rounded-xl p-1",
+        className,
+      )}
     >
       {options.map((option) => {
         const checked = option.value === value;
@@ -35,18 +38,18 @@ export function Segmented<T extends string>({
             aria-checked={checked}
             onClick={() => onChange(option.value)}
             className={cn(
-              "focus-visible:ring-ring flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-[3px] focus-visible:outline-none",
+              "focus-visible:ring-ring flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[0.8rem] font-semibold whitespace-nowrap transition-all duration-200 focus-visible:ring-[3px] focus-visible:outline-none",
               checked
-                ? "bg-ink text-ink-foreground"
-                : "bg-card text-muted-foreground shadow-card hover:text-foreground",
+                ? "bg-card text-foreground shadow-soft"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {option.label}
             {option.count !== undefined && option.count > 0 && (
               <span
                 className={cn(
-                  "grid min-w-5 place-items-center rounded-full px-1.5 text-[0.7rem] leading-5",
-                  checked ? "bg-white/20" : "bg-secondary",
+                  "grid min-w-5 place-items-center rounded-full px-1.5 text-[0.68rem] leading-[1.15rem] tabular-nums",
+                  checked ? "bg-primary text-primary-foreground" : "bg-secondary",
                 )}
               >
                 {option.count}

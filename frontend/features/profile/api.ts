@@ -19,9 +19,16 @@ export function useUpdateProfile() {
     mutationFn: (input: ProfileUpdate) => api.patch<Profile>("/profile/me", input),
     onSuccess: (profile) => {
       queryClient.setQueryData(queryKeys.profile, profile);
-      // The first name is also shown in the menu and on the dashboard.
+      // First name, language and timezone are also used by the shell and every date.
       queryClient.setQueryData<User>(queryKeys.me, (user) =>
-        user ? { ...user, first_name: profile.first_name } : user,
+        user
+          ? {
+              ...user,
+              first_name: profile.first_name,
+              locale: profile.locale,
+              timezone: profile.timezone,
+            }
+          : user,
       );
     },
   });

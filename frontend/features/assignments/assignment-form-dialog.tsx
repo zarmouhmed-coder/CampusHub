@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -18,12 +18,14 @@ import { Field, fieldA11y, FormError } from "@/components/ui/field";
 import { Input, NativeSelect, Textarea } from "@/components/ui/input";
 import { SubjectSelect } from "@/features/subjects/subject-select";
 import { applyApiError } from "@/lib/form-errors";
+import { useI18n } from "@/lib/i18n";
+import { useFormat } from "@/lib/use-format";
 import type { Assignment } from "@/types/api";
 
 import { useCreateAssignment, useUpdateAssignment } from "./api";
-import { PRIORITY_LABELS, STATUS_LABELS } from "./labels";
+import { PRIORITIES, STATUSES } from "./labels";
 import {
-  assignmentSchema,
+  makeAssignmentSchema,
   toAssignmentFormValues,
   toAssignmentInput,
   type AssignmentFormValues,
@@ -40,31 +42,34 @@ export function AssignmentFormDialog({
   onOpenChange: (open: boolean) => void;
   assignment?: Assignment;
 }) {
+  const { t } = useI18n();
+  const fmt = useFormat();
   const create = useCreateAssignment();
   const update = useUpdateAssignment();
+  const schema = useMemo(() => makeAssignmentSchema(t), [t]);
   const form = useForm<AssignmentFormValues>({
-    resolver: zodResolver(assignmentSchema),
-    defaultValues: toAssignmentFormValues(assignment),
+    resolver: zodResolver(schema),
+    defaultValues: toAssignmentFormValues(fmt, assignment),
   });
   const { errors, isSubmitting } = form.formState;
 
   useEffect(() => {
-    if (open) form.reset(toAssignmentFormValues(assignment));
-  }, [open, assignment, form]);
+    if (open) form.reset(toAssignmentFormValues(fmt, assignment));
+  }, [open, assignment, form, fmt]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
-      const input = toAssignmentInput(values);
+      const input = toAssignmentInput(fmt, values);
       if (assignment) {
         await update.mutateAsync({ id: assignment.id, input });
-        toast.success("Devoir mis à jour");
+        toast.success(t.assignments.updated);
       } else {
         await create.mutateAsync(input);
-        toast.success("Devoir ajouté");
+        toast.success(t.assignments.created);
       }
       onOpenChange(false);
     } catch (error) {
-      applyApiError(error, form.setError, FIELDS);
+      applyApiError(error, form.setError, FIELDS, t, { subject_not_found: "subject_id" });
     }
   });
 
@@ -72,14 +77,18 @@ export function AssignmentFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{assignment ? "Modifier le devoir" : "Nouveau devoir"}</DialogTitle>
-          <DialogDescription>Devoir, TP ou projet à rendre.</DialogDescription>
+          <DialogTitle>{assignment ? t.assignments.edit : t.assignments.new}</DialogTitle>
+          <DialogDescription>{t.assignments.dialogDescription}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} noValidate className="grid gap-4">
           <FormError message={errors.root?.server?.message} />
-          <Field id="assignment-title" label="Titre" error={errors.title?.message}>
+          <Field
+            id="assignment-title"
+            label={t.assignments.titleLabel}
+            error={errors.title?.message}
+          >
             <Input
-              placeholder="Ex. TP3 : sockets TCP"
+              placeholder={t.assignments.titlePlaceholder}
               autoFocus
               {...fieldA11y("assignment-title", errors.title?.message)}
               {...form.register("title")}
@@ -88,8 +97,8 @@ export function AssignmentFormDialog({
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <Field
               id="assignment-due"
-              label="Date limite"
-              hint="Heure de Paris"
+              label={t.assignments.due}
+              hint={t.assignments.dueHint(fmt.timeZone)}
               error={errors.due_at?.message}
             >
               <Input
@@ -98,26 +107,30 @@ export function AssignmentFormDialog({
                 {...form.register("due_at")}
               />
             </Field>
-            <Field id="assignment-subject" label="Matière" error={errors.subject_id?.message}>
+            <Field
+              id="assignment-subject"
+              label={t.assignments.subject}
+              error={errors.subject_id?.message}
+            >
               <SubjectSelect
                 {...fieldA11y("assignment-subject", errors.subject_id?.message)}
                 {...form.register("subject_id")}
               />
             </Field>
-            <Field id="assignment-priority" label="Priorité" error={errors.priority?.message}>
+            <Field id="assignment-priority" label={t.priority.label}>
               <NativeSelect id="assignment-priority" {...form.register("priority")}>
-                {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                {PRIORITIES.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {t.priority[value]}
                   </option>
                 ))}
               </NativeSelect>
             </Field>
-            <Field id="assignment-status" label="Statut" error={errors.status?.message}>
+            <Field id="assignment-status" label={t.assignments.status}>
               <NativeSelect id="assignment-status" {...form.register("status")}>
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                {STATUSES.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {t.status[value]}
                   </option>
                 ))}
               </NativeSelect>
@@ -125,23 +138,23 @@ export function AssignmentFormDialog({
           </div>
           <Field
             id="assignment-description"
-            label="Description"
+            label={t.assignments.descriptionLabel}
             optional
             error={errors.description?.message}
           >
             <Textarea
               rows={3}
-              placeholder="Consignes, lien vers le sujet, modalités de rendu…"
+              placeholder={t.assignments.descriptionPlaceholder}
               {...fieldA11y("assignment-description", errors.description?.message)}
               {...form.register("description")}
             />
           </Field>
           <DialogFooter className="mt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Enregistrement…" : assignment ? "Enregistrer" : "Ajouter le devoir"}
+              {isSubmitting ? t.common.saving : assignment ? t.common.save : t.assignments.create}
             </Button>
           </DialogFooter>
         </form>

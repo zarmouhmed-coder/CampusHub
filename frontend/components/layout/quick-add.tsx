@@ -12,6 +12,7 @@ import {
 import { useAssignmentDialogs } from "@/features/assignments/use-assignment-dialogs";
 import { useExamDialogs } from "@/features/exams/use-exam-dialogs";
 import { SubjectFormDialog } from "@/features/subjects/subject-form-dialog";
+import { useI18n } from "@/lib/i18n";
 
 type QuickAdd = {
   addAssignment: () => void;
@@ -21,7 +22,7 @@ type QuickAdd = {
 
 const QuickAddContext = createContext<QuickAdd | null>(null);
 
-/** Creation dialogs reachable from anywhere in the app (the "+" button, the dashboard…). */
+/** Creation dialogs reachable from anywhere in the app ("+" button, dashboard…). */
 export function QuickAddProvider({ children }: { children: React.ReactNode }) {
   const assignments = useAssignmentDialogs();
   const exams = useExamDialogs();
@@ -49,7 +50,7 @@ export function useQuickAdd(): QuickAdd {
   return context;
 }
 
-/** Menu "Ajouter" : devoir, examen ou matière. `children` is the trigger button. */
+/** "Add" menu: assignment, exam or subject. `children` is the trigger button. */
 export function QuickAddMenu({
   children,
   side = "top",
@@ -60,18 +61,19 @@ export function QuickAddMenu({
   align?: "start" | "center" | "end";
 }) {
   const { addAssignment, addExam, addSubject } = useQuickAdd();
+  const { t } = useI18n();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent side={side} align={align} sideOffset={10} className="w-56">
         <DropdownMenuItem onSelect={addAssignment}>
-          <ClipboardList /> Nouveau devoir
+          <ClipboardList /> {t.shell.newAssignment}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={addExam}>
-          <GraduationCap /> Nouvel examen
+          <GraduationCap /> {t.shell.newExam}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={addSubject}>
-          <BookOpen /> Nouvelle matière
+          <BookOpen /> {t.shell.newSubject}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
