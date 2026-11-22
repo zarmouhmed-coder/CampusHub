@@ -59,7 +59,7 @@ def test_cannot_link_item_to_another_users_subject(alice: TestClient, bob: TestC
         payload = {"title": "x", "subject_id": alice_subject, **extra}
         response = bob.post(f"/api/v1/{resource}", json=payload)
         assert response.status_code == 422
-        assert "matière" in response.json()["detail"].lower()
+        assert response.json()["code"] == "subject_not_found"
 
         own = bob.post(f"/api/v1/{resource}", json={"title": "x", **extra}).json()
         response = bob.patch(f"/api/v1/{resource}/{own['id']}", json={"subject_id": alice_subject})

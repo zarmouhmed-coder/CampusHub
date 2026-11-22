@@ -11,7 +11,7 @@ from app.models.enums import AssignmentStatus, Priority
 from app.schemas.assignment import AssignmentCreate, AssignmentUpdate
 from app.services.common import ensure_subject_owned, get_owned
 
-LABEL = "Devoir"
+LABEL = "Assignment"
 
 
 @dataclass(frozen=True)

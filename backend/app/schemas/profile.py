@@ -2,7 +2,16 @@ from typing import Annotated
 
 from pydantic import Field
 
-from app.schemas.common import InputModel, MediumText, Name, NotNull, OutputModel, ShortText
+from app.schemas.common import (
+    InputModel,
+    Locale,
+    MediumText,
+    Name,
+    NotNull,
+    OutputModel,
+    ShortText,
+    TimeZoneName,
+)
 
 
 class ProfileRead(OutputModel):
@@ -13,6 +22,8 @@ class ProfileRead(OutputModel):
     speciality: str | None
     td_group: str | None
     tp_group: str | None
+    locale: Locale
+    timezone: str
 
 
 class ProfileUpdate(InputModel):
@@ -22,3 +33,5 @@ class ProfileUpdate(InputModel):
     speciality: MediumText = None
     td_group: ShortText = None
     tp_group: ShortText = None
+    locale: NotNull[Locale] = None
+    timezone: NotNull[TimeZoneName] = None

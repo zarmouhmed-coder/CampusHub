@@ -1,5 +1,6 @@
 from datetime import UTC
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
+from zoneinfo import available_timezones
 
 from pydantic import (
     AfterValidator,
@@ -52,6 +53,16 @@ def _reject_null(value: Any) -> Any:
     if value is None:
         raise ValueError("Ce champ ne peut pas être vide.")
     return value
+
+
+def _valid_timezone(value: str) -> str:
+    if value not in available_timezones():
+        raise ValueError("Unknown timezone (expected an IANA name such as 'Africa/Dakar').")
+    return value
+
+
+Locale = Literal["fr", "en"]
+TimeZoneName = Annotated[str, AfterValidator(_valid_timezone)]
 
 
 # For PATCH bodies: a required field may be omitted, but not explicitly set to null.

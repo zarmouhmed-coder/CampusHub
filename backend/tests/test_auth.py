@@ -29,7 +29,7 @@ def test_register_rejects_duplicate_email_case_insensitively(client: TestClient)
         json={"first_name": "X", "email": "LEA@telecomnancy.eu", "password": PASSWORD},
     )
     assert response.status_code == 409
-    assert "existe déjà" in response.json()["detail"]
+    assert response.json()["code"] == "email_taken"
 
 
 def test_register_validates_input(client: TestClient) -> None:
@@ -60,7 +60,7 @@ def test_login_rejects_wrong_password_and_unknown_email(client: TestClient) -> N
     for email, password in [("lea@telecomnancy.eu", "wrong-password"), ("nobody@x.fr", PASSWORD)]:
         response = client.post("/api/v1/auth/login", json={"email": email, "password": password})
         assert response.status_code == 401
-        assert response.json()["detail"] == "E-mail ou mot de passe incorrect."
+        assert response.json()["code"] == "invalid_credentials"
     assert client.get("/api/v1/auth/me").status_code == 401
 
 
@@ -72,6 +72,7 @@ def test_login_is_rate_limited(client: TestClient) -> None:
         assert client.post("/api/v1/auth/login", json=bad).status_code == 401
     response = client.post("/api/v1/auth/login", json=bad)
     assert response.status_code == 429
+    assert response.json()["code"] == "too_many_attempts"
     assert int(response.headers["retry-after"]) > 0
     # Even the right password is refused while blocked.
     good = {"email": "lea@telecomnancy.eu", "password": PASSWORD}
@@ -107,6 +108,7 @@ def test_csrf_origin_check(alice: TestClient) -> None:
     payload = {"name": "Réseaux"}
     evil = alice.post("/api/v1/subjects", json=payload, headers={"Origin": "https://evil.example"})
     assert evil.status_code == 403
+    assert evil.json()["code"] == "origin_forbidden"
     ok = alice.post("/api/v1/subjects", json=payload, headers={"Origin": "http://localhost:3000"})
     assert ok.status_code == 201
 
@@ -130,3 +132,34 @@ def test_production_settings_harden_cookies_and_docs() -> None:
     assert production.session_cookie_secure is True
     assert Settings(environment="development").session_cookie_secure is False
     assert Settings(environment="production", cookie_secure=False).session_cookie_secure is False
+
+
+def test_register_stores_locale_and_timezone(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "first_name": "Awa",
+            "email": "awa@ucad.sn",
+            "password": PASSWORD,
+            "locale": "en",
+            "timezone": "Africa/Dakar",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["locale"] == "en" and response.json()["timezone"] == "Africa/Dakar"
+    # Defaults when the browser sends nothing.
+    register(client, "default@x.fr")
+    me = client.get("/api/v1/auth/me").json()
+    assert me["locale"] == "fr" and me["timezone"] == "Europe/Paris"
+
+
+def test_register_rejects_unknown_locale_or_timezone(client: TestClient) -> None:
+    base = {"first_name": "A", "email": "a@b.fr", "password": PASSWORD}
+    for extra in [{"locale": "de"}, {"timezone": "Mars/Olympus"}]:
+        response = client.post("/api/v1/auth/register", json={**base, **extra})
+        assert response.status_code == 422
+        assert response.json()["code"] == "validation_error"
+
+
+def test_errors_have_codes(client: TestClient) -> None:
+    assert client.get("/api/v1/auth/me").json()["code"] == "auth_required"

@@ -25,4 +25,4 @@ def ensure_subject_owned(db: Session, subject_id: uuid.UUID | None, user: User) 
         select(Subject.id).where(Subject.id == subject_id, Subject.user_id == user.id)
     )
     if exists is None:
-        raise InvalidReferenceError("La matière sélectionnée est introuvable.")
+        raise InvalidReferenceError("subject_not_found", "The selected subject does not exist.")

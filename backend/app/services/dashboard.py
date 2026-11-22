@@ -10,23 +10,23 @@ from app.schemas.assignment import AssignmentRead
 from app.schemas.dashboard import DashboardCounts, DashboardSummary, WeekProgress
 from app.schemas.exam import ExamRead
 
-APP_TIME_ZONE = ZoneInfo("Europe/Paris")
 UPCOMING_LIMIT = 5
 OVERDUE_LIMIT = 10
 
 
-def calendar_week(now: datetime) -> tuple[datetime, datetime]:
-    """[Monday 00:00, next Monday 00:00) in Paris time, as UTC instants."""
-    local = now.astimezone(APP_TIME_ZONE)
+def calendar_week(now: datetime, tz: ZoneInfo) -> tuple[datetime, datetime]:
+    """[Monday 00:00, next Monday 00:00) in the given timezone, as UTC instants."""
+    local = now.astimezone(tz)
     monday = local.date() - timedelta(days=local.weekday())
-    start = datetime.combine(monday, time.min, APP_TIME_ZONE)
-    end = datetime.combine(monday + timedelta(days=7), time.min, APP_TIME_ZONE)
+    start = datetime.combine(monday, time.min, tz)
+    end = datetime.combine(monday + timedelta(days=7), time.min, tz)
     return start.astimezone(UTC), end.astimezone(UTC)
 
 
 def get_summary(db: Session, user: User, now: datetime | None = None) -> DashboardSummary:
     now = now or datetime.now(UTC)
-    week_end = now + timedelta(days=7)
+    # "This week" always means the calendar week (Monday-Sunday) in the user's timezone.
+    week_start, week_end = calendar_week(now, ZoneInfo(user.timezone))
     open_assignments = select(Assignment).where(
         Assignment.user_id == user.id, Assignment.status != AssignmentStatus.DONE
     )
@@ -63,7 +63,6 @@ def get_summary(db: Session, user: User, now: datetime | None = None) -> Dashboa
     )
     subjects = db.scalar(select(func.count()).where(Subject.user_id == user.id))
 
-    week_start, week_stop = calendar_week(now)
     week = db.execute(
         select(
             func.count().filter(Assignment.status == AssignmentStatus.TODO),
@@ -72,7 +71,7 @@ def get_summary(db: Session, user: User, now: datetime | None = None) -> Dashboa
         ).where(
             Assignment.user_id == user.id,
             Assignment.due_at >= week_start,
-            Assignment.due_at < week_stop,
+            Assignment.due_at < week_end,
         )
     ).one()
 

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Request, Response, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
+from app.core.errors import AppError
 from app.core.rate_limit import LoginRateLimiter
 from app.models import User
 from app.schemas.auth import LoginRequest, RegisterRequest, UserRead
@@ -48,15 +49,18 @@ def login(data: LoginRequest, db: DbSession, response: Response) -> UserRead:
     key = f"email:{data.email}"
     retry_after = login_limiter.retry_after(key)
     if retry_after:
-        raise HTTPException(
+        raise AppError(
             status.HTTP_429_TOO_MANY_REQUESTS,
-            "Trop de tentatives de connexion. Réessaie dans quelques minutes.",
+            "too_many_attempts",
+            "Too many login attempts. Try again in a few minutes.",
             {"Retry-After": str(retry_after)},
         )
     user = auth_service.authenticate(db, data.email, data.password)
     if user is None:
         login_limiter.record_failure(key)
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou mot de passe incorrect.")
+        raise AppError(
+            status.HTTP_401_UNAUTHORIZED, "invalid_credentials", "Invalid e-mail or password."
+        )
     login_limiter.reset(key)
     return _login_response(db, response, user)
 

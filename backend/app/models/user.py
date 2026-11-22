@@ -26,6 +26,14 @@ class User(TimestampMixin, Base):
     def first_name(self) -> str:
         return self.profile.first_name
 
+    @property
+    def locale(self) -> str:
+        return self.profile.locale
+
+    @property
+    def timezone(self) -> str:
+        return self.profile.timezone
+
 
 class UserSession(Base):
     """A login session. Only the SHA-256 of the cookie token is stored."""

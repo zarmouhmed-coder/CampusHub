@@ -15,7 +15,7 @@ class DashboardCounts(BaseModel):
 
 
 class WeekProgress(BaseModel):
-    """Assignments due in the current calendar week (Monday-Sunday, Europe/Paris)."""
+    """Assignments due in the current calendar week (Monday-Sunday, user timezone)."""
 
     todo: int
     in_progress: int

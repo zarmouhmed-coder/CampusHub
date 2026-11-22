@@ -14,6 +14,8 @@ def to_read(user: User) -> ProfileRead:
         speciality=p.speciality,
         td_group=p.td_group,
         tp_group=p.tp_group,
+        locale=p.locale,
+        timezone=p.timezone,
     )
 
 

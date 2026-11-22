@@ -31,3 +31,11 @@ def test_profile_validation(alice: TestClient) -> None:
         {"email": "hack@x.fr"},  # unknown fields are rejected
     ]:
         assert alice.patch("/api/v1/profile/me", json=payload).status_code == 422, payload
+
+
+def test_profile_locale_and_timezone(alice: TestClient) -> None:
+    response = alice.patch("/api/v1/profile/me", json={"locale": "en", "timezone": "Africa/Lagos"})
+    assert response.status_code == 200
+    assert alice.get("/api/v1/auth/me").json()["timezone"] == "Africa/Lagos"
+    for payload in [{"locale": None}, {"timezone": "Paris"}, {"locale": "es"}]:
+        assert alice.patch("/api/v1/profile/me", json=payload).status_code == 422, payload

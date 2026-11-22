@@ -18,9 +18,9 @@ from app.schemas.auth import RegisterRequest
 
 def register_user(db: Session, data: RegisterRequest) -> User:
     if db.scalar(select(User.id).where(User.email == data.email)) is not None:
-        raise ConflictError("Un compte existe déjà avec cette adresse e-mail.")
+        raise ConflictError("email_taken", "An account already exists with this e-mail address.")
     user = User(email=data.email, password_hash=hash_password(data.password))
-    user.profile = Profile(first_name=data.first_name)
+    user.profile = Profile(first_name=data.first_name, locale=data.locale, timezone=data.timezone)
     db.add(user)
     db.flush()
     return user

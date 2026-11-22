@@ -8,7 +8,7 @@ from app.models import Subject, User
 from app.schemas.subject import SubjectCreate, SubjectUpdate
 from app.services.common import get_owned
 
-LABEL = "Matière"
+LABEL = "Subject"
 
 
 def _ensure_name_available(
@@ -20,7 +20,7 @@ def _ensure_name_available(
     if exclude_id is not None:
         query = query.where(Subject.id != exclude_id)
     if db.scalar(query) is not None:
-        raise ConflictError("Tu as déjà une matière portant ce nom.")
+        raise ConflictError("subject_name_taken", "You already have a subject with this name.")
 
 
 def list_subjects(db: Session, user: User) -> list[Subject]:

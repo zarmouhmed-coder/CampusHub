@@ -23,7 +23,9 @@ def origin_check(allowed_origins: list[str]) -> Callable[..., Awaitable[Response
         if request.method not in SAFE_METHODS:
             origin = request.headers.get("origin")
             if origin is not None and origin.rstrip("/") not in allowed:
-                return JSONResponse({"detail": "Origine de la requête non autorisée."}, 403)
+                return JSONResponse(
+                    {"code": "origin_forbidden", "detail": "Request origin not allowed."}, 403
+                )
         return await call_next(request)
 
     return middleware

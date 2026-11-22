@@ -10,7 +10,7 @@ from app.models import Exam, User
 from app.schemas.exam import ExamCreate, ExamUpdate
 from app.services.common import ensure_subject_owned, get_owned
 
-LABEL = "Examen"
+LABEL = "Exam"
 
 
 @dataclass(frozen=True)
