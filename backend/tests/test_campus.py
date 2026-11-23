@@ -1,5 +1,8 @@
 from datetime import date, timedelta
 
+from fastapi.testclient import TestClient
+from httpx2 import Response
+
 from tests.school_factory import School, build_structure, login, make_member, make_school
 
 API = "/api/v1"
@@ -19,7 +22,7 @@ def _setup() -> tuple[School, dict[str, str], str]:
 
 def _slot(
     school: School, ids: dict[str, str], room: str | None, start: str, end: str, repeat: int = 0
-) -> object:
+) -> Response:
     return school.admin.post(
         f"{API}/school/sessions",
         json={
@@ -36,16 +39,16 @@ def _slot(
 def test_timetable_and_conflicts() -> None:
     school, ids, room = _setup()
     r = _slot(school, ids, room, "2026-11-23T08:00:00Z", "2026-11-23T10:00:00Z", repeat=2)
-    assert r.status_code == 201 and len(r.json()) == 3  # type: ignore[attr-defined]
-    assert r.json()[2]["starts_at"] == "2026-12-07T08:00:00Z"  # type: ignore[attr-defined]
+    assert r.status_code == 201 and len(r.json()) == 3
+    assert r.json()[2]["starts_at"] == "2026-12-07T08:00:00Z"
 
     # Overlap: same cohort and teacher, even without a room.
     r = _slot(school, ids, None, "2026-11-23T09:00:00Z", "2026-11-23T11:00:00Z")
-    assert r.status_code == 409 and r.json()["code"] == "schedule_conflict"  # type: ignore[attr-defined]
+    assert r.status_code == 409 and r.json()["code"] == "schedule_conflict"
     # Back-to-back slots are fine.
     assert (
         _slot(school, ids, room, "2026-11-23T10:00:00Z", "2026-11-23T12:00:00Z").status_code == 201
-    )  # type: ignore[attr-defined]
+    )
 
     # Another cohort in the same room at the same time: room conflict.
     other_cohort = school.admin.post(
@@ -89,7 +92,7 @@ def test_attendance() -> None:
     school, ids, room = _setup()
     session = _slot(school, ids, room, "2026-11-23T08:00:00Z", "2026-11-23T10:00:00Z").json()[0][
         "id"
-    ]  # type: ignore[attr-defined]
+    ]
     sid = str(school.student_id)
     roster = school.teacher.get(f"{API}/teaching/sessions/{session}/attendance").json()
     assert [(r["student_id"], r["status"]) for r in roster] == [(sid, None)]
@@ -206,7 +209,7 @@ def test_announcements_targeting() -> None:
         json={"program_id": ids["program"], "academic_year_id": ids["year"], "name": "M1"},
     ).json()["id"]
 
-    def post(client, body):  # type: ignore[no-untyped-def]
+    def post(client: TestClient, body: dict[str, object]) -> Response:
         return client.post(f"{API}/announcements", json={"title": "Info", "body": "Texte", **body})
 
     assert post(school.admin, {"audience": "all"}).status_code == 201
@@ -231,7 +234,7 @@ def test_announcements_targeting() -> None:
     assert post(school.student, {"audience": "all"}).status_code == 403
     assert post(school.admin, {"audience": "cohort"}).status_code == 422
 
-    def titles(client):  # type: ignore[no-untyped-def]
+    def titles(client: TestClient) -> set[str]:
         return {a["title"] for a in client.get(f"{API}/announcements").json()}
 
     assert titles(school.student) == {"Info", "TP annulé"}
