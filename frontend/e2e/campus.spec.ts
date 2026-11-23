@@ -9,7 +9,8 @@ const OWNER = process.env.E2E_SUPERADMIN_EMAIL;
 const OWNER_PASSWORD = process.env.E2E_SUPERADMIN_PASSWORD;
 const PASSWORD = "motdepasse-solide";
 
-const seen = (page: Page, text: string | RegExp) => page.getByText(text).filter({ visible: true }).first();
+const seen = (page: Page, text: string | RegExp) =>
+  page.getByText(text).filter({ visible: true }).first();
 const dialog = (page: Page) => page.getByRole("dialog");
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -21,7 +22,10 @@ async function login(page: Page, email: string, password = PASSWORD) {
 }
 
 async function nav(page: Page, name: string) {
-  await page.getByRole("navigation", { name: "Navigation principale" }).getByRole("link", { name, exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Navigation principale" })
+    .getByRole("link", { name, exact: true })
+    .click();
 }
 
 /** Opens an invitation link in a fresh browser context and creates the account. */
@@ -35,7 +39,12 @@ async function acceptInvitation(browser: Browser, url: string, firstName: string
   return page;
 }
 
-async function invite(page: Page, email: string, role: string, extra: { cohort?: string; number?: string } = {}) {
+async function invite(
+  page: Page,
+  email: string,
+  role: string,
+  extra: { cohort?: string; number?: string } = {},
+) {
   await page.getByRole("button", { name: "Inviter" }).first().click();
   const d = dialog(page);
   await d.getByLabel("E-mail").fill(email);
@@ -48,17 +57,29 @@ async function invite(page: Page, email: string, role: string, extra: { cohort?:
   return url;
 }
 
-async function addRow(page: Page, section: string, button: string, fields: Record<string, string>, selects: Record<string, string> = {}) {
+async function addRow(
+  page: Page,
+  section: string,
+  button: string,
+  fields: Record<string, string>,
+  selects: Record<string, string> = {},
+) {
   await page.getByRole("button", { name: button }).click();
   const d = dialog(page);
-  for (const [label, value] of Object.entries(fields)) await d.getByLabel(label, { exact: true }).fill(value);
-  for (const [label, value] of Object.entries(selects)) await d.getByLabel(label, { exact: true }).selectOption({ label: value });
+  // Optional fields are labelled "Niveau facultatif": match the start of the label.
+  const field = (label: string) => d.getByLabel(new RegExp(`^${label}`));
+  for (const [label, value] of Object.entries(fields)) await field(label).fill(value);
+  for (const [label, value] of Object.entries(selects))
+    await field(label).selectOption({ label: value });
   await d.getByRole("button", { name: "Enregistrer" }).click();
   await expect(d).toBeHidden();
   await expect(seen(page, section)).toBeVisible();
 }
 
-test("institution: super admin, admin, teacher and student work together", async ({ page, browser }, info) => {
+test("institution: super admin, admin, teacher and student work together", async ({
+  page,
+  browser,
+}, info) => {
   test.skip(!OWNER || !OWNER_PASSWORD, "E2E_SUPERADMIN_EMAIL / E2E_SUPERADMIN_PASSWORD not set");
   test.skip(info.project.name !== "desktop", "desktop scenario");
   test.setTimeout(180_000);
@@ -74,6 +95,7 @@ test("institution: super admin, admin, teacher and student work together", async
   await d.getByLabel("Nom", { exact: true }).fill(`Institut Supérieur ${id}`);
   await d.getByLabel("Identifiant").fill(`isup-${id}`);
   await d.getByLabel("E-mail de l'administrateur").fill(`dir-${id}@isup.sn`);
+  await d.getByLabel("Formule").selectOption("premium"); // all modules, finance included
   await d.getByRole("button", { name: "Nouvel établissement" }).click();
   const adminUrl = (await d.locator("code").textContent())!;
   expect(adminUrl).toContain("/invite/");
@@ -84,22 +106,41 @@ test("institution: super admin, admin, teacher and student work together", async
   await expect(seen(admin, `Institut Supérieur ${id}`)).toBeVisible();
 
   await nav(admin, "Structure");
-  await addRow(admin, `${year}-${year + 1}`, "Nouvelle année universitaire",
-    { Nom: `${year}-${year + 1}`, Début: `${year}-01-01`, Fin: `${year}-12-31` });
-  await addRow(admin, "Semestre 1", "Nouvelle période",
-    { Nom: "Semestre 1", Début: `${year}-01-01`, Fin: `${year}-12-30` }, { "Année universitaire": `${year}-${year + 1}` });
+  await addRow(admin, `${year}-${year + 1}`, "Nouvelle année universitaire", {
+    Nom: `${year}-${year + 1}`,
+    Début: `${year}-01-01`,
+    Fin: `${year}-12-31`,
+  });
+  await addRow(
+    admin,
+    "Semestre 1",
+    "Nouvelle période",
+    { Nom: "Semestre 1", Début: `${year}-01-01`, Fin: `${year}-12-30` },
+    { "Année universitaire": `${year}-${year + 1}` },
+  );
   await admin.getByRole("radio", { name: "Départements et formations" }).click();
-  await addRow(admin, "Licence Informatique", "Nouvelle formation", { Nom: "Licence Informatique", Niveau: "Licence 1" });
+  await addRow(admin, "Licence Informatique", "Nouvelle formation", {
+    Nom: "Licence Informatique",
+    Niveau: "Licence 1",
+  });
   await admin.getByRole("radio", { name: "Promotions" }).click();
-  await addRow(admin, "L1 Info", "Nouvelle promotion", { Nom: "L1 Info" },
-    { Formation: "Licence Informatique", "Année universitaire": `${year}-${year + 1}` });
+  await addRow(
+    admin,
+    "L1 Info",
+    "Nouvelle promotion",
+    { Nom: "L1 Info" },
+    { Formation: "Licence Informatique", "Année universitaire": `${year}-${year + 1}` },
+  );
   await admin.getByRole("radio", { name: "Salles" }).click();
   await addRow(admin, "Amphi A", "Nouvelle salle", { Nom: "Amphi A", Capacité: "200" });
 
   // People: a teacher and a student (enrolled in the cohort).
   await nav(admin, "Personnes");
   const teacherUrl = await invite(admin, `prof-${id}@isup.sn`, "Enseignant");
-  const studentUrl = await invite(admin, `etu-${id}@isup.sn`, "Étudiant", { cohort: "L1 Info", number: `M-${id}` });
+  const studentUrl = await invite(admin, `etu-${id}@isup.sn`, "Étudiant", {
+    cohort: "L1 Info",
+    number: `M-${id}`,
+  });
   const teacher = await acceptInvitation(browser, teacherUrl, "Moussa");
   await expect(teacher).toHaveURL(/\/teaching$/);
   const student = await acceptInvitation(browser, studentUrl, "Fatou");
@@ -107,7 +148,13 @@ test("institution: super admin, admin, teacher and student work together", async
 
   // Units and courses.
   await nav(admin, "UE et cours");
-  await addRow(admin, "Programmation", "Nouvelle UE", { Nom: "Programmation", Crédits: "6" }, { Période: "Semestre 1" });
+  await addRow(
+    admin,
+    "Programmation",
+    "Nouvelle UE",
+    { Nom: "Programmation", Crédits: "6" },
+    { Période: "Semestre 1" },
+  );
   await admin.getByRole("button", { name: "Ajouter un cours" }).click();
   d = dialog(admin);
   await d.getByLabel("Nom", { exact: true }).fill("Algorithmique");
@@ -120,7 +167,9 @@ test("institution: super admin, admin, teacher and student work together", async
   await admin.getByRole("button", { name: "Ajouter une séance" }).click();
   d = dialog(admin);
   await d.getByLabel("Cours").selectOption({ label: "Algorithmique — L1 Info" });
-  await d.getByLabel("Date").fill(`${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}`);
+  await d
+    .getByLabel("Date")
+    .fill(`${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}`);
   await d.getByLabel("Salle").selectOption({ label: "Amphi A" });
   await d.getByRole("button", { name: "Ajouter une séance" }).click();
   await expect(seen(admin, "1 séance ajoutée")).toBeVisible();

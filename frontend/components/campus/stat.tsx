@@ -29,7 +29,13 @@ export function Stat({
         <Icon className="size-[1.05rem]" strokeWidth={1.9} />
       </span>
       <div className="min-w-0">
-        <p className="font-display truncate text-xl leading-none font-semibold tabular-nums">
+        <p
+          className={cn(
+            "font-display truncate leading-none font-semibold tabular-nums",
+            // Long values (amounts in XOF, NGN…) get a smaller size instead of being cut.
+            String(value).length > 9 ? "text-base" : "text-xl",
+          )}
+        >
           {value}
         </p>
         <p className="text-muted-foreground mt-1 truncate text-xs">{label}</p>

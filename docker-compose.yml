@@ -40,6 +40,13 @@ services:
       DATABASE_URL: *database-url
       ENVIRONMENT: ${ENVIRONMENT:-development}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-console}
+      EMAIL_FROM: ${EMAIL_FROM:-CampusHub <no-reply@campushub.local>}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     ports:
       - "127.0.0.1:8000:8000" # Swagger UI: http://localhost:8000/api/docs
     depends_on:

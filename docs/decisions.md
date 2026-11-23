@@ -108,9 +108,39 @@ Remplace la direction D13 : identité universitaire (bleu nuit, bleu institution
 
 Aucune fonctionnalité supprimée. Changement visible : sur le tableau de bord, l'onglet « Examens » de la liste est devenu une carte permanente « Prochains examens » dans la colonne latérale, pour utiliser l'espace disponible sur ordinateur.
 
+## D18. Multi-établissement : base partagée, isolation à deux niveaux
+
+Une seule base, une colonne `institution_id` sur chaque table d'établissement. Les services filtrent toujours par l'établissement de la session, et des clés étrangères composites `(x_id, institution_id)` rendent physiquement impossible une référence croisée. Plus simple à exploiter et à faire évoluer qu'une base par établissement ; une offre « base dédiée » reste possible plus tard pour les grands comptes. La Row Level Security de PostgreSQL est une couche complémentaire prévue, pas encore activée.
+
+## D19. Rôles et permissions dans le code, vérifiés par le serveur
+
+Rôles (admin, enseignant, étudiant) = ensembles de permissions (`app/core/permissions.py`). Chaque route exige une permission et, le cas échéant, un module. Le frontend masque ce qui n'est pas accessible, mais seul le serveur fait foi (tests `test_permissions_are_enforced_by_role`, `test_teaching_permissions`, `test_institutions_are_isolated`). Ajouter un rôle = ajouter une entrée, pas modifier les routes.
+
+## D20. Le super administrateur est hors des établissements
+
+`users.is_superadmin`, créé uniquement en ligne de commande. La console plateforme ne donne pas accès aux notes ou aux finances des établissements : elle gère les établissements, leurs formules et modules, et consulte les journaux.
+
+## D21. Comptes par invitation, lien partageable
+
+L'administrateur invite par e-mail ; l'API renvoie aussi le lien pour qu'il puisse le transmettre par WhatsApp ou SMS, très utilisés sur le marché visé. Si l'adresse a déjà un compte, la personne est ajoutée directement. L'inscription publique reste ouverte pour le seul espace personnel (agenda étudiant), sans accès à aucun établissement.
+
+## D22. E-mails derrière une interface
+
+`EMAIL_BACKEND=console|smtp|memory`. Le fournisseur n'étant pas encore choisi, n'importe quel service SMTP se branche par configuration, sans changement de code.
+
+## D23. Résultats calculés, documents figés
+
+Les moyennes ne sont jamais stockées : elles sont recalculées à partir des notes publiées, donc toujours cohérentes avec le barème et la règle de compensation de l'établissement. Un relevé émis, en revanche, est **figé** (JSONB) avec un code de vérification public : une modification ultérieure des notes ne change pas un document déjà remis, et l'établissement peut le révoquer.
+
+## D24. Paiements enregistrés, pas encaissés en ligne
+
+L'établissement enregistre chaque paiement (y compris mobile money avec sa référence de transaction). Aucune intégration simulée n'est livrée : la connexion à un agrégateur (CinetPay, PayDunya, Flutterwave, Paystack…) se fera une fois le fournisseur choisi, en créant automatiquement ces mêmes paiements.
+
 ## Limites connues de la V0.1
 
 - Limitation de connexion en mémoire : à déplacer en base ou dans Redis avec plusieurs workers.
-- Pas de suppression de compte, de changement d'e-mail ou de mot de passe, ni de réinitialisation par e-mail.
+- Pas de suppression de compte ni de changement d'e-mail depuis l'interface.
+- Pas de notifications (hors e-mails d'invitation et de réinitialisation), pas de paiement en ligne automatique, pas de Row Level Security PostgreSQL (isolation assurée par les services et les clés étrangères composites).
+- Les sous-domaines par établissement ne sont pas encore en place : l'établissement est choisi via le compte.
 - Pas de nettoyage planifié des sessions expirées (elles sont purgées à la connexion suivante de l'utilisateur).
 - Pas de pipeline de déploiement (volontaire tant que le processus n'est pas fiabilisé) ; en production, prévoir HTTPS (cookies `Secure`), `ENVIRONMENT=production` et une limitation par IP au reverse proxy.

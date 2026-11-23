@@ -85,3 +85,38 @@ Toutes les routes sont préfixées par `/api/v1`. La documentation OpenAPI inter
 Les listes paginées renvoient `{items, total, limit, offset}`. Les erreurs ont toujours la forme `{"code": …, "detail": …}`. `code` est stable et traduit par l'interface (`auth_required`, `invalid_credentials`, `too_many_attempts`, `email_taken`, `subject_name_taken`, `subject_not_found`, `not_found`, `origin_forbidden`, `validation_error`, `internal_error`) ; `detail` est un message anglais destiné aux développeurs, ou la liste des champs invalides pour `validation_error` (422).
 
 Codes utilisés : 200, 201 (création), 204 (suppression, déconnexion), 401, 403 (origine refusée), 404, 409 (e-mail ou nom de matière déjà pris), 422, 429 (trop de tentatives de connexion), 500 (message générique, détails uniquement dans les logs).
+
+## Multi-établissement (depuis la version « plateforme »)
+
+```text
+Requête ──► cookie de session ──► user_sessions (utilisateur + établissement actif)
+                                       │
+                         get_ctx() ────┴──► Membership (rôle) + Institution (statut, modules)
+                                       │
+                 require("grades.enter", "grades") ──► 403 forbidden / module_disabled
+                                       │
+                 service : toutes les requêtes filtrées par institution_id
+```
+
+- **Établissement actif** : stocké dans la session côté serveur (`user_sessions.institution_id`), jamais fourni par le navigateur. `POST /auth/institution` permet de changer d'établissement pour les comptes rattachés à plusieurs.
+- **Rôles → permissions** : `backend/app/core/permissions.py`. Chaque route déclare la permission (et le module) qu'elle exige via `require(...)`. Les enseignants sont en plus restreints à **leurs** cours (`owned_course`).
+- **Modules** : `institutions.modules` (fixé par la formule, ajustable par le super administrateur). Un module désactivé renvoie `403 module_disabled` et disparaît de la navigation.
+- **Suspension** : un établissement suspendu renvoie `403 institution_suspended` à tous ses membres.
+- **Isolation** : filtrage systématique par `institution_id` dans les services **et** clés étrangères composites `(x_id, institution_id)` : la base refuse qu'une note, une séance ou une facture pointe vers une ligne d'un autre établissement.
+- **CRUD générique** : `backend/app/api/crud.py` génère les routes de la structure académique (filtrage, vérification des références, codes `in_use` / `duplicate`, journal).
+- **Journal d'activité** : `audit_logs`, alimenté par chaque action d'administration, de notation, de finance et de document.
+
+### Routes ajoutées
+
+| Domaine | Routes (préfixe `/api/v1`) |
+| --- | --- |
+| Session | `POST /auth/institution`, `POST /auth/password-reset`, `POST /auth/password-reset/confirm` |
+| Invitations (public) | `GET /invitations/{token}`, `POST /invitations/{token}/accept` |
+| Plateforme (super admin) | `GET/POST /platform/institutions`, `GET/PATCH /platform/institutions/{id}`, `GET /platform/users`, `GET /platform/stats`, `GET /platform/audit` |
+| Établissement (admin) | `GET/PATCH /school/settings`, `GET /school/overview`, `GET /school/audit`, CRUD `/school/{departments,programs,academic-years,periods,cohorts,rooms,units,courses}`, `GET /school/members`, `PATCH /school/members/{id}`, `POST/DELETE /school/members/{id}/enrollments[/{cohort}]`, `GET/POST/DELETE /school/invitations`, `POST /school/invitations/import` |
+| Enseignement | `GET /teaching/courses[/{id}]`, `GET/POST /teaching/courses/{id}/assessments`, `PATCH/DELETE /teaching/assessments/{id}`, `GET/PUT /teaching/assessments/{id}/grades`, `GET/PUT /teaching/sessions/{id}/attendance` |
+| Emploi du temps | `GET /timetable?start&end`, `POST /school/sessions`, `PATCH/DELETE /school/sessions/{id}` |
+| Résultats et documents | `GET /me/results`, `GET /school/students/{id}/results`, `POST/GET /school/documents`, `POST /school/documents/{id}/revoke`, `GET /documents/{id}`, `GET /me/documents`, `GET /verify/{code}` (public) |
+| Absences | `GET /me/attendance`, `GET /school/attendance`, `PATCH /school/attendance/{id}` |
+| Finances | `POST /school/invoices`, `POST /school/invoices/bulk`, `GET /school/invoices`, `PATCH/DELETE /school/invoices/{id}`, `POST /school/invoices/{id}/payments`, `DELETE /school/payments/{id}`, `GET /school/finance/summary`, `GET /me/invoices` |
+| Annonces | `GET/POST /announcements`, `DELETE /announcements/{id}` |

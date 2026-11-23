@@ -123,3 +123,27 @@ FOREIGN KEY (subject_id, user_id) REFERENCES subjects (id, user_id)
 | un devoir ou un examen | aucun effet de bord |
 
 La V0.1 n'expose pas encore d'endpoint de suppression de compte, mais le schéma la rend cohérente.
+
+## Tables multi-établissement
+
+Toutes les tables ci-dessous (sauf `institutions`, `password_resets`, `audit_logs`) portent `institution_id` (FK → `institutions`, `ON DELETE CASCADE`) et une contrainte `UNIQUE (id, institution_id)`. Les références entre elles sont des **clés étrangères composites** `(ref_id, institution_id)` : une ligne ne peut jamais pointer vers une ligne d'un autre établissement.
+
+| Table | Rôle | Règles notables |
+| --- | --- | --- |
+| `institutions` | Établissement client | `slug` unique ; `status` active/suspended ; `plan` ; `modules` (JSONB) ; langue, fuseau, devise ; `grade_max`, `pass_mark` (`pass_mark ≤ grade_max`), `compensation` ; couleur, logo |
+| `memberships` | Rôle d'un utilisateur dans un établissement | une seule par (utilisateur, établissement) ; rôle admin/teacher/student ; statut ; matricule unique par établissement |
+| `invitations` | Lien d'invitation | seul le hachage du jeton est stocké ; expiration ; promotion facultative |
+| `password_resets` | Réinitialisation de mot de passe | jeton haché, usage unique, 1 h |
+| `audit_logs` | Journal d'activité | conservé si l'acteur ou l'établissement disparaît (`SET NULL`) |
+| `departments`, `programs` | Départements, formations | noms uniques par établissement ; supprimer un département vide `department_id` des formations |
+| `academic_years`, `periods` | Années, périodes | `ends_on > starts_on` ; une seule année « en cours » (règle applicative) |
+| `cohorts`, `enrollments` | Promotions, inscriptions | une formation ou une année utilisée par une promotion ne peut pas être supprimée (`RESTRICT`) ; inscription unique par (promotion, étudiant) |
+| `rooms` | Salles | nom unique, capacité > 0 |
+| `units`, `courses` | UE (crédits) et cours (coefficient, enseignant) | la période d'une UE doit appartenir à l'année de sa promotion ; supprimer un enseignant vide `teacher_id` |
+| `assessments`, `grades` | Évaluations et notes | poids > 0, barème > 0 ; note unique par (évaluation, étudiant) ; `absent` compte 0 |
+| `class_sessions`, `attendance` | Séances et appel | `ends_at > starts_at` ; index (établissement, début) ; statut present/absent/late/excused |
+| `invoices`, `payments` | Factures et paiements | montants > 0 ; moyen de paiement contrôlé ; un étudiant facturé ne peut pas être supprimé (`RESTRICT`) ; une facture payée ne peut pas être supprimée (règle applicative) |
+| `announcements` | Annonces | `audience = 'cohort'` si et seulement si `cohort_id` est renseigné |
+| `issued_documents` | Relevés et attestations émis | contenu figé (JSONB) ; `code` de vérification unique ; révocation datée |
+
+`users.is_superadmin` marque les propriétaires de la plateforme ; `user_sessions.institution_id` mémorise l'établissement actif.

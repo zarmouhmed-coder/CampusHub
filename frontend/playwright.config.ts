@@ -13,6 +13,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "off",
+    actionTimeout: 15_000,
     locale: "fr-FR",
     timezoneId: "Europe/Paris",
   },
