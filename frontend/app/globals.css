@@ -248,3 +248,10 @@
     }
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black;
+  }
+}

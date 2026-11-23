@@ -100,8 +100,15 @@ jobs:
       - name: Install Playwright
         working-directory: frontend
         run: pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium
-      - name: Critical path
+      - name: Platform super administrator for the multi-role scenario
+        run: >
+          docker compose exec -T -e CAMPUSHUB_PASSWORD=ci-owner-password backend
+          python -m app.cli create-superadmin --email owner@ci.local --first-name Owner
+      - name: End-to-end scenarios
         working-directory: frontend
+        env:
+          E2E_SUPERADMIN_EMAIL: owner@ci.local
+          E2E_SUPERADMIN_PASSWORD: ci-owner-password
         run: pnpm test:e2e
       - name: Stack logs on failure
         if: failure()

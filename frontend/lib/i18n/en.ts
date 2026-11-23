@@ -1,3 +1,4 @@
+import { campusEn } from "./campus-en";
 import type { Messages } from "./fr";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -43,6 +44,37 @@ export const en: Messages = {
     network: "Cannot reach the server. Check your connection.",
     generic: "Something went wrong.",
     unexpected: "An unexpected error occurred.",
+    no_institution: "Your account is not linked to any active institution.",
+    institution_suspended: "This institution is suspended.",
+    forbidden: "This action is not allowed for your role.",
+    module_disabled: "This module is not enabled for the institution.",
+    in_use: "Not possible: this item is still used elsewhere.",
+    duplicate: "An item with this name already exists.",
+    teacher_not_found: "Teacher not found.",
+    period_mismatch: "The period does not belong to the cohort's academic year.",
+    cohort_not_found: "Cohort not found.",
+    program_not_found: "Programme not found.",
+    academic_year_not_found: "Academic year not found.",
+    department_not_found: "Department not found.",
+    unit_not_found: "Unit not found.",
+    room_not_found: "Room not found.",
+    period_not_found: "Period not found.",
+    already_member: "This person is already a member of the institution.",
+    student_number_taken: "This student ID is already used.",
+    last_admin: "The institution must keep at least one administrator.",
+    not_a_student: "This person is not a student.",
+    invalid_token: "Invalid or expired link.",
+    invitation_expired: "This invitation is no longer valid.",
+    score_above_max: "A grade is above the maximum score.",
+    student_not_found: "Student not found in this course.",
+    schedule_conflict: "Timetable conflict: room, teacher or cohort already busy.",
+    no_results: "No published results to put on a transcript.",
+    not_enrolled: "The student is not enrolled in any cohort.",
+    document_not_found: "Document not found.",
+    overpayment: "The payment exceeds the balance due.",
+    amount_below_paid: "The amount cannot be lower than what has already been paid.",
+    has_payments: "Cancel the payments first: financial history is kept.",
+    empty_cohort: "No student is enrolled in this cohort.",
   },
   validation: {
     invalid: "Invalid value.",
@@ -313,4 +345,5 @@ export const en: Messages = {
     preferencesSaved: "Preferences saved",
   },
   languages: { fr: "Français", en: "English" },
+  campus: campusEn,
 };

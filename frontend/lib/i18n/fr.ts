@@ -1,3 +1,5 @@
+import { campusFr } from "./campus-fr";
+
 /**
  * French dictionary: the reference. `en.ts` must have exactly the same shape
  * (enforced by the `Messages` type), so a missing translation is a type error.
@@ -46,6 +48,37 @@ export const fr = {
     network: "Impossible de joindre le serveur. Vérifie ta connexion.",
     generic: "Une erreur est survenue.",
     unexpected: "Une erreur inattendue est survenue.",
+    no_institution: "Ton compte n'est rattaché à aucun établissement actif.",
+    institution_suspended: "Cet établissement est suspendu.",
+    forbidden: "Action non autorisée pour ton rôle.",
+    module_disabled: "Ce module n'est pas activé pour l'établissement.",
+    in_use: "Impossible : cet élément est encore utilisé ailleurs.",
+    duplicate: "Un élément porte déjà ce nom.",
+    teacher_not_found: "Enseignant introuvable.",
+    period_mismatch: "La période n'appartient pas à l'année de la promotion.",
+    cohort_not_found: "Promotion introuvable.",
+    program_not_found: "Formation introuvable.",
+    academic_year_not_found: "Année universitaire introuvable.",
+    department_not_found: "Département introuvable.",
+    unit_not_found: "UE introuvable.",
+    room_not_found: "Salle introuvable.",
+    period_not_found: "Période introuvable.",
+    already_member: "Cette personne fait déjà partie de l'établissement.",
+    student_number_taken: "Ce matricule est déjà utilisé.",
+    last_admin: "L'établissement doit garder au moins un administrateur.",
+    not_a_student: "Cette personne n'est pas étudiante.",
+    invalid_token: "Lien invalide ou expiré.",
+    invitation_expired: "Cette invitation n'est plus valable.",
+    score_above_max: "Une note dépasse le barème.",
+    student_not_found: "Étudiant introuvable dans ce cours.",
+    schedule_conflict: "Conflit d'emploi du temps : salle, enseignant ou promotion déjà occupé.",
+    no_results: "Aucun résultat publié à faire figurer sur un relevé.",
+    not_enrolled: "L'étudiant n'est inscrit dans aucune promotion.",
+    document_not_found: "Document introuvable.",
+    overpayment: "Le paiement dépasse le reste à payer.",
+    amount_below_paid: "Le montant ne peut pas être inférieur à ce qui a déjà été payé.",
+    has_payments: "Annule d'abord les paiements : l'historique financier est conservé.",
+    empty_cohort: "Aucun étudiant inscrit dans cette promotion.",
   },
   validation: {
     invalid: "Valeur invalide.",
@@ -319,6 +352,7 @@ export const fr = {
     preferencesSaved: "Préférences enregistrées",
   },
   languages: { fr: "Français", en: "English" },
+  campus: campusFr,
 };
 
 export type Messages = typeof fr;

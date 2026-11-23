@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,12 @@ export function LoginForm() {
           {...form.register("password")}
         />
       </Field>
+      <Link
+        href="/forgot-password"
+        className="text-primary -mt-2 justify-self-end text-sm hover:underline"
+      >
+        {t.campus.password.forgotLink}
+      </Link>
       <Button
         type="submit"
         size="lg"

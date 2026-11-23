@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
+import { homeFor } from "@/components/layout/navigation";
 import { api } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { browserTimeZone } from "@/lib/dates";
@@ -26,7 +27,7 @@ function useAuthSuccess() {
     // Start from a clean cache: nothing from a previous account may leak.
     queryClient.clear();
     queryClient.setQueryData(queryKeys.me, user);
-    router.replace("/dashboard");
+    router.replace(homeFor(user));
   };
 }
 
@@ -56,6 +57,21 @@ export function useLogout() {
       // piece of in-memory state of this account is discarded at once.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign("/login");
+    },
+  });
+}
+
+/** Switch the active institution (people who belong to several). */
+export function useSwitchInstitution() {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  return useMutation({
+    mutationFn: (institutionId: string) =>
+      api.post<User>("/auth/institution", { institution_id: institutionId }),
+    onSuccess: (user) => {
+      queryClient.clear();
+      queryClient.setQueryData(queryKeys.me, user);
+      router.replace(homeFor(user));
     },
   });
 }

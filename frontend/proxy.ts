@@ -1,7 +1,22 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "campushub_session";
-const PRIVATE_PREFIXES = ["/dashboard", "/subjects", "/assignments", "/exams", "/profile"];
+const PRIVATE_PREFIXES = [
+  "/dashboard",
+  "/subjects",
+  "/assignments",
+  "/exams",
+  "/profile",
+  "/platform",
+  "/school",
+  "/teaching",
+  "/timetable",
+  "/results",
+  "/attendance",
+  "/fees",
+  "/documents",
+  "/announcements",
+];
 
 /**
  * Optimistic redirects only, based on the presence of the session cookie.
@@ -30,5 +45,14 @@ export const config = {
     "/assignments/:path*",
     "/exams/:path*",
     "/profile/:path*",
+    "/platform/:path*",
+    "/school/:path*",
+    "/teaching/:path*",
+    "/timetable/:path*",
+    "/results/:path*",
+    "/attendance/:path*",
+    "/fees/:path*",
+    "/documents/:path*",
+    "/announcements/:path*",
   ],
 };
