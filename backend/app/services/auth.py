@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select
@@ -12,7 +13,7 @@ from app.core.security import (
     password_needs_rehash,
     verify_password,
 )
-from app.models import Profile, User, UserSession
+from app.models import Institution, Membership, Profile, User, UserSession
 from app.schemas.auth import RegisterRequest
 
 
@@ -50,12 +51,13 @@ def create_session(db: Session, user: User) -> str:
             user_id=user.id,
             token_hash=hash_session_token(token),
             expires_at=now + timedelta(days=get_settings().session_ttl_days),
+            institution_id=default_institution_id(db, user),
         )
     )
     return token
 
 
-def get_user_from_token(db: Session, token: str) -> User | None:
+def get_session_from_token(db: Session, token: str) -> UserSession | None:
     session = db.scalar(
         select(UserSession).where(
             UserSession.token_hash == hash_session_token(token),
@@ -64,7 +66,27 @@ def get_user_from_token(db: Session, token: str) -> User | None:
     )
     if session is None or not session.user.is_active:
         return None
-    return session.user
+    return session
+
+
+def get_user_from_token(db: Session, token: str) -> User | None:
+    session = get_session_from_token(db, token)
+    return session.user if session else None
+
+
+def default_institution_id(db: Session, user: User) -> uuid.UUID | None:
+    """Institution opened at login: the user's oldest active membership."""
+    return db.scalar(
+        select(Membership.institution_id)
+        .join(Institution, Institution.id == Membership.institution_id)
+        .where(
+            Membership.user_id == user.id,
+            Membership.status == "active",
+            Institution.status == "active",
+        )
+        .order_by(Membership.created_at)
+        .limit(1)
+    )
 
 
 def revoke_session(db: Session, token: str) -> None:

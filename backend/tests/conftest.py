@@ -11,6 +11,7 @@ os.environ["DATABASE_URL"] = os.environ.get(
 )
 os.environ["ENVIRONMENT"] = "test"
 os.environ["ALLOWED_ORIGINS"] = "http://localhost:3000"
+os.environ["EMAIL_BACKEND"] = "memory"
 
 from alembic.config import Config
 from fastapi.testclient import TestClient
@@ -19,6 +20,7 @@ from sqlalchemy.engine import make_url
 
 from alembic import command
 from app.api.routes.auth import login_limiter
+from app.core.email import outbox
 from app.db.base import Base
 from app.db.session import engine
 from app.main import app
@@ -47,6 +49,7 @@ def clean_tables() -> Iterator[None]:
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {TABLES} CASCADE"))
     login_limiter._failures.clear()
+    outbox.clear()
 
 
 @pytest.fixture

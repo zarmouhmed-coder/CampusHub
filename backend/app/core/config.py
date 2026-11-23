@@ -26,6 +26,22 @@ class Settings(BaseSettings):
     login_max_attempts: int = 5
     login_window_seconds: int = 15 * 60
 
+    # Public URL of the web app: used in invitation and password-reset links.
+    frontend_url: str = "http://localhost:3000"
+
+    # E-mail delivery: "console" (logs the message, development), "memory" (tests)
+    # or "smtp" (any provider: Brevo, Mailgun, SES, Gmail Workspace… via SMTP).
+    email_backend: Literal["console", "memory", "smtp"] = "console"
+    email_from: str = "CampusHub <no-reply@campushub.local>"
+    smtp_host: str = "localhost"
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_starttls: bool = True
+
+    invitation_ttl_days: int = 14
+    password_reset_ttl_minutes: int = 60
+
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def split_origins(cls, value: object) -> object:
