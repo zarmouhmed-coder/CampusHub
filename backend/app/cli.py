@@ -12,6 +12,7 @@ import getpass
 import os
 import sys
 
+from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import select
 
 from app.core.security import hash_password
@@ -21,6 +22,11 @@ from app.services import audit
 
 
 def create_superadmin(email: str, first_name: str) -> None:
+    # Same rules as the API's login form, so the account can actually sign in.
+    try:
+        email = TypeAdapter(EmailStr).validate_python(email.strip())
+    except ValidationError:
+        sys.exit(f"Adresse e-mail invalide : {email}")
     password = os.environ.get("CAMPUSHUB_PASSWORD") or getpass.getpass("Mot de passe : ")
     if len(password) < 12:
         sys.exit("Le mot de passe d'un super administrateur doit faire au moins 12 caractères.")
